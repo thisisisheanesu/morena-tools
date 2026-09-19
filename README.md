@@ -56,6 +56,30 @@ supplied. `tooldisambig` at x3 was a quarter of the corpus teaching "when unsure
 identifier is a penalty on braces and quotes, and it pushed the model into an invalid byte
 immediately after emitting a correct patch.
 
+## Results
+
+Held-out menu from the real Paystack OpenAPI spec. No tool name in it appears in the training data.
+
+| | base | nano-tools (209M) | mini-tools (503M) |
+|---|---|---|---|
+| Picks the right tool | 0 to 9% | 91% | **91%** |
+| Uses only declared arguments | 0% | 100% | 91% |
+| Edits one field, not all | 0% | 100% | **100%** |
+| Stays quiet when no tool fits | 0 to 13% | 100% | **100%** |
+| Asks instead of guessing | 0% | 83% | **100%** |
+| Carries a thread across six turns | 0% | 100% | **100%** |
+| Decides to call unprompted | 18 to 27% | 27% | **50%** |
+
+Nano was trained harder (700 steps against mini's 450) and still lost on the two rows that involve
+judgement, so the demo ships mini.
+
+The last row is the honest limitation. Left to decide for itself the model calls about half the
+time, and otherwise asks a clarifying question, occasionally about a field the tool does not have.
+Prefilling the tool-call marker is the workaround, and is what the 91% measures.
+
+Weights: [thisisisheanesu/morena-tools-gguf](https://huggingface.co/thisisisheanesu/morena-tools-gguf)
+Data: [thisisisheanesu/morena-tools-nigerian-fintech](https://huggingface.co/datasets/thisisisheanesu/morena-tools-nigerian-fintech)
+
 ## Layout
 
 ```
