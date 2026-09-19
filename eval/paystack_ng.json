@@ -1,0 +1,117 @@
+{
+  "name": "paystack_ng",
+  "menu": "menus/paystack.json",
+  "note": "Real Paystack API operations as the tool menu. MORENA has never seen this menu. Nigerian Pidgin, Yoruba, Igbo, Hausa and English.",
+  "jobs": [
+    {
+      "lang": "Pidgin",
+      "question": "Abeg send 5000 naira give Chidi.",
+      "expect": "transfer_initiate"
+    },
+    {
+      "lang": "Pidgin",
+      "question": "How much money dey my account now?",
+      "expect": "balance_fetch"
+    },
+    {
+      "lang": "Pidgin",
+      "question": "Check if the payment don enter, reference na TRX_9912.",
+      "expect": "transaction_verify"
+    },
+    {
+      "lang": "Pidgin",
+      "question": "Who get account number 0123456789 for GTBank?",
+      "expect": "bank_resolveAccountNumber"
+    },
+    {
+      "lang": "Pidgin",
+      "question": "I wan know all the banks wey dey Nigeria.",
+      "expect": "bank_list"
+    },
+    {
+      "lang": "Pidgin",
+      "question": "Abeg return the 2000 naira wey I pay for transaction TRX_88.",
+      "expect": "refund_create"
+    },
+    {
+      "lang": "Yoruba",
+      "question": "Mo fe fi egberun marun naira ranse si Tunde.",
+      "expect": "transfer_initiate"
+    },
+    {
+      "lang": "Yoruba",
+      "question": "Elo ni o ku ninu akanti mi?",
+      "expect": "balance_fetch"
+    },
+    {
+      "lang": "Yoruba",
+      "question": "So fun mi eni to ni nomba akanti 0123456789 ni banki Zenith.",
+      "expect": "bank_resolveAccountNumber"
+    },
+    {
+      "lang": "Igbo",
+      "question": "Kedu ego di na akaunti m?",
+      "expect": "balance_fetch"
+    },
+    {
+      "lang": "Igbo",
+      "question": "Zigara Ngozi naira puku ise.",
+      "expect": "transfer_initiate"
+    },
+    {
+      "lang": "Igbo",
+      "question": "Lelee ma akwugoro ugwo ahu, nturugo bu TRX_4410.",
+      "expect": "transaction_verify"
+    },
+    {
+      "lang": "Hausa",
+      "question": "Ina son tura naira dubu biyar zuwa ga Musa.",
+      "expect": "transfer_initiate"
+    },
+    {
+      "lang": "Hausa",
+      "question": "Nawa ne ya rage a asusuna?",
+      "expect": "balance_fetch"
+    },
+    {
+      "lang": "Hausa",
+      "question": "Ina son sanin sunan mai lambar asusu 0123456789 a bankin UBA.",
+      "expect": "bank_resolveAccountNumber"
+    },
+    {
+      "lang": "English",
+      "question": "Send 5,000 naira to my saved recipient RCP_882, reason is rent.",
+      "expect": "transfer_initiate"
+    },
+    {
+      "lang": "English",
+      "question": "What is my available balance?",
+      "expect": "balance_fetch"
+    },
+    {
+      "lang": "English",
+      "question": "Start a payment of 15000 naira for ada@example.com.",
+      "expect": "transaction_initialize"
+    },
+    {
+      "lang": "English",
+      "question": "Save 0123456789 at Access Bank as a payout recipient called Ada Obi.",
+      "expect": "transferrecipient_create"
+    },
+    {
+      "lang": "English",
+      "question": "Create a dedicated virtual account for customer CUS_71 with Wema.",
+      "expect": "dedicatedAccount_create"
+    },
+    {
+      "lang": "English",
+      "question": "Refund 2000 naira on transaction TRX_88.",
+      "expect": "refund_create"
+    },
+    {
+      "lang": "English",
+      "question": "Did payment TRX_9912 succeed?",
+      "expect": "transaction_verify"
+    }
+  ]
+}

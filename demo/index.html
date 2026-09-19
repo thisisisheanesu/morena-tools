@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MORENA Pay</title>
+<style>
+:root{
+  --ink:#0d1117; --mute:#5b6472; --line:#e4e7ec; --panel:#fff; --bg:#eef0f4;
+  --brand:#0f7b6c; --brand2:#12a594; --accent:#e8590c; --accent-soft:#fff2e8;
+  --ok:#15803d; --ok-soft:#eefaf1; --warn:#a16207; --warn-soft:#fef6dd;
+  --card1:#0f7b6c; --card2:#0b4f46;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:ui-sans-serif,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+}
+/* Light only, on purpose. A demo that flips palette with the viewer's OS setting is a
+   demo whose screenshots and recordings do not match each other. */
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+  font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.stage{display:flex;gap:26px;align-items:flex-start;justify-content:center;
+  padding:26px 16px 60px;max-width:1180px;margin:0 auto}
+/* On a phone this stops being a mockup and becomes the app: full bleed, exactly one viewport
+   tall, so the sheet and the ask bar are pinned where a thumb expects them. The old rule left
+   height:auto, which let the phone grow past the screen and took the ask bar and the confirm
+   sheet with it, which is why nothing worked on mobile. 100dvh, not 100vh, because the browser
+   chrome on iOS makes vh taller than the visible area. */
+.tabs{display:none}
+@media(max-width:940px){
+  .tabs{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:30;
+        background:var(--panel);border-top:1px solid var(--line);
+        padding-bottom:env(safe-area-inset-bottom)}
+  .tabs button{flex:1;position:relative;border:0;background:none;cursor:pointer;
+        padding:11px 6px 12px;font:600 11.5px var(--sans);color:var(--mute);
+        display:flex;flex-direction:column;align-items:center;gap:3px}
+  .tabs button:before{content:"";width:18px;height:2px;border-radius:2px;background:transparent}
+  .tabs button.on{color:var(--brand)}
+  .tabs button.on:before{background:var(--brand)}
+  .badge{width:6px;height:6px;border-radius:50%;background:var(--accent);
+         position:absolute;top:8px;right:calc(50% - 26px);opacity:0;transition:opacity .2s}
+  .badge.on{opacity:1}
+  /* One pane at a time. The phone loses the tab bar's height so nothing hides behind it. */
+  body[data-tab="app"] .side{display:none}
+  body[data-tab="explain"] .phone,body[data-tab="learn"] .phone{display:none}
+  body[data-tab="explain"] #box-learn,body[data-tab="explain"] #techwrap2{display:none}
+  body[data-tab="learn"] #box-explain{display:none}
+  .phone{height:calc(100dvh - 57px)}
+  .side{padding:18px 16px 76px}
+}
+
+/* On a phone there is no mockup. Drawing a picture of a phone inside a phone is a desktop
+   device: it frames the thing and says "this is an app". On the real device it just wastes the
+   screen and looks like a bug, so the frame, the shadow, the rounded corners and the fake
+   09:41 / NGN / 5G status bar all come off, and this simply IS the app. The breathing room that
+   the margins used to provide comes from the content padding instead. */
+@media(max-width:940px){
+  .stage{flex-direction:column;align-items:stretch;gap:0;padding:0;max-width:100%}
+  .phone{width:100%;max-width:100%;height:100dvh;min-height:0;
+         border-radius:0;border:0;box-shadow:none}
+  .apphead{padding:calc(12px + env(safe-area-inset-top)) 18px 14px}
+  .scroll{padding:0 18px 14px}
+  .askwrap{padding:10px 16px calc(12px + env(safe-area-inset-bottom))}
+  .coach{border-radius:0}
+  .sheet{border-radius:22px 22px 0 0}
+  .side{max-width:100%;width:100%;padding:22px 18px 56px;background:var(--bg);
+        border-top:1px solid var(--line)}
+}
+
+/* ---------- phone ---------- */
+/* Height is capped to the window, not fixed at 788px. At 788 the ask bar sat below the fold on a
+   laptop, so the first thing anyone saw was a bank app with no way to talk to it. */
+.phone{width:390px;max-width:100%;flex:0 0 auto;background:var(--panel);
+  border-radius:34px;border:1px solid var(--line);overflow:hidden;
+  box-shadow:0 22px 60px rgba(0,0,0,.16),0 2px 6px rgba(0,0,0,.06);
+  display:flex;flex-direction:column;position:relative;
+  height:min(788px, calc(100dvh - 52px)); min-height:560px}
+.apphead{display:flex;align-items:center;gap:11px;padding:18px 20px 14px}
+.avatar{width:38px;height:38px;border-radius:50%;flex:0 0 auto;
+  background:linear-gradient(135deg,var(--brand2),var(--card2));color:#fff;
+  display:grid;place-items:center;font-weight:700;font-size:14px}
+.hi{flex:1;min-width:0}
+.hi b{display:block;font-size:15px;letter-spacing:-.01em}
+.hi span{font-size:12px;color:var(--mute)}
+.badge{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  padding:4px 8px;border-radius:5px;background:var(--accent-soft);color:var(--accent)}
+.scroll{flex:1;overflow-y:auto;padding:0 20px 14px;scrollbar-width:thin}
+
+.balcard{border-radius:20px;padding:19px;color:#fff;position:relative;overflow:hidden;
+  background:linear-gradient(135deg,var(--card1),var(--card2))}
+.balcard:after{content:"";position:absolute;right:-46px;top:-46px;width:150px;height:150px;
+  border-radius:50%;background:rgba(255,255,255,.07)}
+.balcard .lab{font-size:11.5px;opacity:.82;letter-spacing:.07em;text-transform:uppercase}
+.balcard .amt{font-size:33px;font-weight:700;letter-spacing:-.025em;margin:5px 0 14px;
+  font-variant-numeric:tabular-nums}
+.balcard .foot{display:flex;justify-content:space-between;font-size:12px;opacity:.85;
+  font-family:var(--mono)}
+.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:15px 0 6px}
+.qa{background:transparent;border:1px solid var(--line);border-radius:13px;padding:11px 4px;
+  display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;
+  font:600 11px var(--sans);color:var(--mute)}
+.qa:hover{border-color:var(--brand);color:var(--brand)}
+.qa svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.9;
+  stroke-linecap:round;stroke-linejoin:round}
+.sect{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--mute);margin:19px 0 8px}
+.tx{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.tx:last-child{border-bottom:0}
+.txi{width:37px;height:37px;border-radius:11px;flex:0 0 auto;display:grid;place-items:center;
+  font-weight:700;font-size:13px;background:var(--bg);color:var(--mute)}
+.tx.out .txi{background:var(--accent-soft);color:var(--accent)}
+.tx.in .txi{background:var(--ok-soft);color:var(--ok)}
+.txm{flex:1;min-width:0}
+.txm b{display:block;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.txm span{font-size:11.5px;color:var(--mute)}
+.txa{font-weight:700;font-size:14px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tx.out .txa{color:var(--ink)} .tx.in .txa{color:var(--ok)}
+.tx.pending{opacity:.55}
+
+/* chat */
+.msgs{display:flex;flex-direction:column;gap:9px;margin-top:6px}
+.msg{max-width:84%;padding:9px 13px;border-radius:15px;font-size:14px;line-height:1.45}
+.msg.me{align-self:flex-end;background:var(--brand);color:#fff;border-bottom-right-radius:5px}
+.msg.bot{align-self:flex-start;background:var(--bg);border:1px solid var(--line);
+  border-bottom-left-radius:5px}
+.msg.sys{align-self:center;font-size:11.5px;color:var(--mute);background:transparent;padding:2px}
+
+/* A receipt in the thread. The sheet disappears on confirm, and without this the only trace of
+   what just happened was a sentence and a row in the list further down. The card is the thing a
+   person screenshots and sends to whoever they just paid. */
+.receipt{align-self:stretch;max-width:100%;border:1px solid var(--line);border-radius:14px;
+  background:var(--panel);overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.05)}
+.receipt .rtop{display:flex;align-items:center;gap:10px;padding:12px 14px;
+  background:linear-gradient(135deg,var(--card1),var(--card2));color:#fff}
+.receipt .tick{width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.22);
+  display:grid;place-items:center;font-size:13px;flex:0 0 auto}
+.receipt .rtop b{font-size:14px;display:block;line-height:1.25}
+.receipt .rtop span{font-size:11.5px;opacity:.85}
+.receipt .ramt{margin-left:auto;font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;
+  white-space:nowrap}
+.receipt .rbody{padding:10px 14px 12px}
+.receipt .rrow{display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:12.5px}
+.receipt .rrow span{color:var(--mute)}
+.receipt .rrow b{font-weight:600;text-align:right;word-break:break-word;font-family:var(--mono);
+  font-size:12px}
+.receipt .rfoot{border-top:1px dashed var(--line);margin-top:8px;padding-top:9px;
+  font-size:11.5px;color:var(--mute);display:flex;justify-content:space-between}
+
+.askwrap{border-top:1px solid var(--line);background:var(--panel);
+  padding:10px 14px calc(12px + env(safe-area-inset-bottom))}
+.hints{display:flex;gap:6px;overflow-x:auto;padding-bottom:9px;scrollbar-width:none;
+  -ms-overflow-style:none}
+.hints::-webkit-scrollbar{display:none}
+.hints.gone{display:none}
+.hint{flex:0 0 auto;font:500 12px var(--sans);padding:6px 12px;border-radius:999px;cursor:pointer;
+  border:1px solid var(--line);background:transparent;color:var(--mute);white-space:nowrap}
+.hint:hover,.hint:focus-visible{border-color:var(--brand);color:var(--brand);outline:none}
+/* One field. The border lives on the wrapper so the button sits inside it and the whole thing
+   lights up together on focus, instead of a box and a circle reacting separately. */
+.askbar{display:flex;align-items:flex-end;gap:6px;background:var(--bg);
+  border:1.5px solid var(--line);border-radius:22px;padding:4px 4px 4px 6px;
+  transition:border-color .15s}
+.askbar:focus-within{border-color:var(--brand)}
+.askbar textarea{flex:1;border:0;background:transparent;color:var(--ink);outline:none;
+  padding:9px 8px;font:14.5px/1.45 var(--sans);resize:none;max-height:96px;min-height:36px}
+.askbar textarea::placeholder{color:var(--mute);opacity:.85}
+.send{width:36px;height:36px;flex:0 0 auto;border-radius:50%;border:0;cursor:pointer;
+  background:var(--brand);color:#fff;display:grid;place-items:center;transition:transform .12s}
+.send:not(:disabled):hover{transform:scale(1.06)}
+.send:disabled{opacity:.32;cursor:not-allowed}
+.send svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2.3;
+  stroke-linecap:round;stroke-linejoin:round}
+
+/* sheet */
+/* Sheet, shadcn flavoured: a dimmed and blurred scrim behind, a plain surface with a hairline
+   border and one soft shadow, muted labels against near-black values, a separator above the
+   actions. Anchored to the bottom half of the screen rather than hugging its own content, so the
+   dialog always lands in the same place instead of the eye chasing it. */
+.scrim{position:absolute;inset:0;z-index:4;opacity:0;pointer-events:none;
+  background:rgba(9,11,14,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  transition:opacity .28s ease}
+.scrim.up{opacity:1;pointer-events:auto}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--panel);
+  border:1px solid var(--line);border-bottom:0;border-radius:16px 16px 0 0;
+  box-shadow:0 -8px 30px rgba(9,11,14,.16);
+  padding:6px 20px calc(18px + env(safe-area-inset-bottom));transform:translateY(102%);
+  transition:transform .34s cubic-bezier(.32,.72,0,1);z-index:6;
+  min-height:52%;max-height:88%;overflow-y:auto;display:flex;flex-direction:column}
+.sheet.up{transform:translateY(0)}
+/* The sheet covers the ask bar, so the only way out used to be Cancel, which also threw away the
+   pending call. The handle now collapses the sheet and KEEPS the call, which is what "close this
+   and say what to change" actually asks of it. */
+.grabzone{padding:6px 0 9px;cursor:pointer;display:block;width:100%;border:0;background:none}
+.grab{width:38px;height:4px;border-radius:3px;background:var(--line);margin:0 auto;
+  transition:background .15s}
+.grabzone:hover .grab{background:var(--mute)}
+.pendbar{display:none;align-items:center;gap:9px;margin:0 0 9px;padding:9px 12px;border-radius:11px;
+  background:var(--accent-soft);border:1px solid var(--accent);cursor:pointer;width:100%;
+  font:600 12.5px var(--sans);color:var(--accent);text-align:left}
+.pendbar.on{display:flex}
+.pendbar .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex:0 0 auto;
+  animation:p 1.6s ease-in-out infinite}
+@keyframes p{50%{opacity:.3}}
+.pendbar .go{margin-left:auto;font-weight:500;opacity:.8}
+.sheet h3{margin:0 0 4px;font-size:17px;font-weight:650;letter-spacing:-.015em}
+.sheet .who{font-size:13px;color:var(--mute);margin-bottom:14px;line-height:1.45}
+#fields{flex:1}
+.frow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 11px;
+  border-radius:10px;margin-bottom:2px;border:1px solid transparent;transition:background .2s}
+.frow:nth-child(odd){background:var(--bg)}
+.frow.changed:nth-child(odd),.frow.removed:nth-child(odd){background:var(--accent-soft)}
+.frow .k{font-size:13px;color:var(--mute)}
+.frow .v{font-size:14px;font-weight:600;text-align:right;word-break:break-word;
+  font-variant-numeric:tabular-nums}
+.frow.changed{background:var(--accent-soft);border-color:var(--accent)}
+.frow.changed .k{color:var(--accent)}
+.frow.removed{background:var(--warn-soft);border-color:var(--warn);opacity:.7}
+.frow.removed .v{text-decoration:line-through}
+.pill{display:inline-block;font:600 9.5px/1 var(--sans);letter-spacing:.06em;text-transform:uppercase;
+  padding:3px 6px;border-radius:4px;margin-left:7px;vertical-align:1px}
+.pill.changed{background:var(--accent);color:#fff}
+.pill.removed{background:var(--warn);color:#fff}
+.sheetbtns{display:flex;gap:8px;margin-top:16px;padding-top:15px;border-top:1px solid var(--line)}
+.btn{flex:1;padding:11px 16px;border-radius:9px;cursor:pointer;font:600 14px var(--sans);
+  border:1px solid transparent;transition:opacity .15s,background .15s}
+.btn.pri{background:var(--ink);color:var(--panel)}
+.btn.pri:hover{opacity:.9}
+.btn.sec{background:var(--panel);border-color:var(--line);color:var(--ink)}
+.btn.sec:hover{background:var(--bg)}
+.hintline{font-size:11.5px;color:var(--mute);text-align:center;margin-top:11px}
+
+.dots{display:inline-flex;gap:3px;align-items:center}
+.dots i{width:5px;height:5px;border-radius:50%;background:var(--mute);animation:b 1.2s infinite}
+.dots i:nth-child(2){animation-delay:.18s} .dots i:nth-child(3){animation-delay:.36s}
+@keyframes b{0%,60%,100%{opacity:.25;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+/* ---------- onboarding ---------- */
+/* Anchored inside the phone, not over the whole window, so the thing being explained stays on
+   screen while it is explained. A tour that hides the product teaches nothing. */
+/* A box-shadow cannot blur what is behind it, so the old "cutout" was a ring drawn on a flat
+   grey wash: dim, but never actually out of focus. This builds the backdrop from four panels
+   around the spotlight instead. Each one carries its own blur, so everything except the
+   highlighted control is genuinely defocused, and the hole is a real hole. */
+.coach{position:absolute;inset:0;z-index:20;display:none;border-radius:34px;overflow:hidden}
+.coach.on{display:block}
+.shade{position:absolute;background:rgba(6,9,12,.66);backdrop-filter:blur(5px);
+  -webkit-backdrop-filter:blur(5px);transition:all .28s cubic-bezier(.32,.72,0,1)}
+.coach.full .shade#sh-t{inset:0}
+.coach.full .shade#sh-b,.coach.full .shade#sh-l,.coach.full .shade#sh-r{display:none}
+.coachcard{position:absolute;left:14px;right:14px;bottom:16px;background:var(--panel);
+  border-radius:18px;padding:19px 18px 16px;box-shadow:0 14px 44px rgba(0,0,0,.3)}
+.coachcard.top{top:80px;bottom:auto}
+.coachcard h3{margin:0 0 7px;font-size:17.5px;letter-spacing:-.01em}
+.coachcard p{margin:0;font-size:14px;color:var(--mute);line-height:1.55}
+.coachcard .eg{display:block;margin-top:10px;padding:9px 12px;border-radius:9px;
+  background:var(--bg);border:1px dashed var(--line);font-size:13.5px;color:var(--ink)}
+.coachnav{display:flex;align-items:center;gap:10px;margin-top:15px}
+.dots2{display:flex;gap:5px}
+.dots2 i{width:6px;height:6px;border-radius:50%;background:var(--line)}
+.dots2 i.on{background:var(--brand);width:16px;border-radius:3px}
+.coachnav .skip{margin-left:auto;background:none;border:0;color:var(--mute);cursor:pointer;
+  font:500 13px var(--sans);padding:8px 4px}
+.coachnav .next{background:var(--brand);color:#fff;border:0;border-radius:10px;cursor:pointer;
+  font:700 13.5px var(--sans);padding:10px 20px}
+.spot{position:absolute;border-radius:14px;border:2px solid var(--brand);
+  box-shadow:0 0 0 4px rgba(45,212,191,.25);pointer-events:none;
+  transition:all .28s cubic-bezier(.32,.72,0,1)}
+
+/* ---------- plain english panel ---------- */
+.plain{display:flex;gap:11px;align-items:flex-start;padding:12px 13px;border-radius:12px;
+  border:1px solid var(--line);background:var(--panel);margin-bottom:9px}
+.plain .ic{width:26px;height:26px;border-radius:8px;flex:0 0 auto;display:grid;place-items:center;
+  font-size:14px;background:var(--bg)}
+.plain.good .ic{background:var(--ok-soft);color:var(--ok)}
+.plain.bad .ic{background:var(--accent-soft);color:var(--accent)}
+.plain b{display:block;font-size:14px;margin-bottom:2px}
+.plain span{font-size:13px;color:var(--mute);line-height:1.5}
+.techwrap{display:none}
+.techwrap.on{display:block}
+.toggle{display:inline-flex;align-items:center;gap:7px;cursor:pointer;border:1px solid var(--line);
+  background:transparent;border-radius:999px;padding:6px 12px;font:600 11.5px var(--sans);
+  color:var(--mute)}
+.toggle:hover{border-color:var(--brand);color:var(--brand)}
+.toggle .sw{width:26px;height:15px;border-radius:9px;background:var(--line);position:relative;
+  transition:background .2s}
+.toggle .sw:after{content:"";position:absolute;top:2px;left:2px;width:11px;height:11px;
+  border-radius:50%;background:var(--panel);transition:transform .2s}
+.toggle.on .sw{background:var(--brand)}
+.toggle.on .sw:after{transform:translateX(11px)}
+
+/* ---------- inspector ---------- */
+.side{flex:1;min-width:0;max-width:430px;display:flex;flex-direction:column;gap:14px}
+.brandline{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.brandline h1{margin:0;font-size:21px;letter-spacing:-.02em}
+.brandline h1 em{font-style:normal;color:var(--brand)}
+.brandline .v{font:11px var(--mono);color:var(--mute)}
+.lede{color:var(--mute);font-size:13.5px;margin:7px 0 0}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px}
+.box h2{margin:0 0 11px;font-size:11px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--mute)}
+.verd{padding:9px 12px;border-radius:9px;font-size:13px;font-weight:600;
+  border:1px solid;margin-bottom:8px;display:flex;gap:8px;align-items:flex-start}
+.verd.good{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.verd.bad{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.verd.idle{background:transparent;border-color:var(--line);color:var(--mute);font-weight:500}
+pre{font:11.5px/1.5 var(--mono);background:var(--bg);border:1px solid var(--line);
+  border-radius:9px;padding:11px;overflow-x:auto;margin:8px 0 0;white-space:pre-wrap;
+  word-break:break-word;color:var(--ink)}
+.kv{display:flex;justify-content:space-between;font-size:12px;padding:4px 0;
+  border-bottom:1px dotted var(--line)}
+.kv:last-child{border:0}
+.kv b{font-family:var(--mono);font-weight:600}
+.status{font:11px var(--mono);padding:4px 9px;border-radius:999px;border:1px solid var(--line);
+  color:var(--mute);white-space:nowrap}
+.status.live{color:var(--ok);border-color:var(--ok)}
+.status.down{color:var(--accent);border-color:var(--accent)}
+.foot{font-size:11.5px;color:var(--mute);line-height:1.6}
+.foot a{color:var(--brand)}
+.sc{display:grid;grid-template-columns:1fr auto auto;gap:2px 10px;align-items:center;
+  font-size:12px;margin-top:4px}
+.sc .h{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);
+  font-weight:700;padding-bottom:3px}
+.sc .n{font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums}
+.sc .was{color:var(--mute)}
+.sc .now{color:var(--ok);font-weight:700}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.chip{font:500 11.5px var(--sans);padding:6px 10px;border-radius:999px;cursor:pointer;
+  border:1px solid var(--line);background:transparent;color:var(--mute)}
+.chip:hover{border-color:var(--brand);color:var(--brand)}
+.ghostbtn{font:600 11.5px var(--sans);padding:6px 11px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--line);background:transparent;color:var(--mute)}
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <!-- ================= PHONE ================= -->
+  <div class="phone">
+    <div class="apphead">
+      <div class="avatar">AO</div>
+      <div class="hi"><b>Adaeze Okafor</b><span>Main account &middot; 0123456789</span></div>
+      <span class="badge">demo</span>
+    </div>
+
+    <div class="scroll" id="scroll">
+      <div class="balcard">
+        <div class="lab">Available balance</div>
+        <div class="amt" id="bal">&#8358;2,450,000.00</div>
+        <div class="foot"><span>&bull;&bull;&bull;&bull; &bull;&bull;&bull;&bull; &bull;&bull;&bull;&bull; 4417</span><span>MORENA Pay</span></div>
+      </div>
+
+      <div class="quick">
+        <button class="qa" data-ask="Abeg send 5000 naira give Chidi.">
+          <svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>Send</button>
+        <button class="qa" data-ask="Buy 1000 naira airtime for 08031234567 on MTN.">
+          <svg viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>Airtime</button>
+        <button class="qa" data-ask="How much money dey my account now?">
+          <svg viewBox="0 0 24 24"><path d="M3 12h18M3 6h18M3 18h18"/></svg>Balance</button>
+        <button class="qa" data-ask="Refund transaction TRX_4410, only 2000 naira of it.">
+          <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/></svg>Refund</button>
+      </div>
+
+      <div class="sect">Assistant</div>
+      <div class="msgs" id="msgs">
+        <div class="msg bot">Hello Adaeze. Tell me what you want to do, for any language wey you sabi.</div>
+      </div>
+
+      <div class="sect">Recent</div>
+      <div id="txs">
+        <div class="tx in"><div class="txi">SA</div><div class="txm"><b>Salary, Kobo Systems</b><span>Today &middot; 08:02</span></div><div class="txa">+&#8358;840,000</div></div>
+        <div class="tx out"><div class="txi">MT</div><div class="txm"><b>MTN airtime</b><span>Yesterday &middot; 19:41</span></div><div class="txa">&#8358;2,000</div></div>
+        <div class="tx out"><div class="txi">EK</div><div class="txm"><b>Eko Electric</b><span>Thu &middot; 11:15</span></div><div class="txa">&#8358;18,500</div></div>
+      </div>
+    </div>
+
+    <div class="askwrap">
+      <button class="pendbar" id="pendbar">
+        <span class="dot"></span><span id="pendtext">Transfer pending</span>
+        <span class="go">review</span>
+      </button>
+      <div class="hints" id="hints"></div>
+      <div class="askbar">
+        <textarea id="q" rows="1" placeholder="Say what you want to do..."></textarea>
+        <button class="send" id="go" aria-label="Send" disabled>
+          <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="coach" id="coach">
+      <div class="shade" id="sh-t"></div><div class="shade" id="sh-b"></div>
+      <div class="shade" id="sh-l"></div><div class="shade" id="sh-r"></div>
+      <div class="spot" id="spot" style="display:none"></div>
+      <div class="coachcard" id="coachcard">
+        <h3 id="ctitle"></h3>
+        <p id="ctext"></p>
+        <div class="coachnav">
+          <div class="dots2" id="cdots"></div>
+          <button class="skip" id="cskip">Skip</button>
+          <button class="next" id="cnext">Next</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="scrim" id="scrim"></div>
+
+    <div class="sheet" id="sheet">
+      <button class="grabzone" id="grab" aria-label="Collapse, keeping the call"><span class="grab"></span></button>
+      <h3 id="sheetTitle">Confirm transfer</h3>
+      <div class="who" id="sheetSub">MORENA read your request and filled this in</div>
+      <div id="fields"></div>
+      <div class="sheetbtns">
+        <button class="btn sec" id="cancel">Cancel</button>
+        <button class="btn pri" id="confirm">Confirm</button>
+      </div>
+      <div class="hintline">Not right? Pull this down and just say what to change.</div>
+    </div>
+  </div>
+
+  <!-- ================= INSPECTOR ================= -->
+  <nav class="tabs" id="tabs">
+    <button data-tab="app" class="on"><span>Pay</span></button>
+    <button data-tab="explain"><span>What happened</span><i class="badge" id="tabdot"></i></button>
+    <button data-tab="learn"><span>Examples</span></button>
+  </nav>
+
+  <div class="side">
+    <div>
+      <div class="brandline">
+        <h1>MORENA <em>Pay</em></h1>
+        <span class="v" id="modelName">checking model</span>
+      </div>
+      <p class="lede" id="lede">A small MORENA model, running on this laptop CPU, turning Pidgin,
+        Yoruba, Igbo and Hausa into real API calls. No cloud, no GPU, no network.</p>
+    </div>
+
+    <div class="box" id="box-explain">
+      <h2>What just happened</h2>
+      <div id="plain">
+        <div class="plain"><div class="ic">&#9679;</div>
+          <div><b>Nothing yet</b><span>Ask the app for something and I will explain what it did,
+          in plain words.</span></div></div>
+      </div>
+      <div style="margin-top:11px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="toggle" id="techtoggle"><span class="sw"></span>Show the technical view</button>
+        <button class="toggle" id="replay" style="margin-left:auto">Replay the tour</button>
+      </div>
+      <div class="techwrap" id="techwrap">
+        <div id="verdicts" style="margin-top:12px"></div>
+        <pre id="callJson" style="display:none"></pre>
+      </div>
+    </div>
+
+    <div class="box" id="box-learn">
+      <h2>Try these</h2>
+      <div class="chips" id="chips"></div>
+    </div>
+
+    <div class="box techwrap" id="techwrap2">
+      <h2>Why this is hard</h2>
+      <div class="foot">
+        The ten tools in this demo are taken from the public
+        <b>Paystack API index</b>, the real OpenAPI spec for a production payments platform.
+        None of them appear anywhere in the model's training data, and the names are not
+        guessable: <code>transferrecipient_create</code>, <code>bank_resolveAccountNumber</code>.
+        Getting one right means reading the schema, not recognising the name.
+        <div style="margin-top:9px">Measured on 22 held-out requests, before and after the
+        fine-tune:</div>
+        <div id="scorecard" style="margin-top:8px"></div>
+        <div style="margin-top:9px;opacity:.75">Independent demo. Not affiliated with or endorsed
+        by Paystack.</div>
+        <div style="margin-top:9px"><a href="/console.html">Open the raw tool console</a>
+        for the unstyled view, with the exact prompt and the full JSON.</div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+const MENU = [{"name":"balance_fetch","description":"Check the available balance on the account","arguments":{},"_http":"GET /balance"},{"name":"bank_list","description":"List the banks available in a country","arguments":{"country":"string","currency":"string","type":"string"},"_http":"GET /bank"},{"name":"bank_resolveAccountNumber","description":"Look up the account holder name for a bank account number","arguments":{"account_number":"number","bank_code":"number"},"_http":"GET /bank/resolve"},{"name":"customer_create","description":"Create a customer record","arguments":{"email":"string"},"_http":"POST /customer"},{"name":"dedicatedAccount_create","description":"Create a dedicated virtual account number for a customer","arguments":{"customer":"string","preferred_bank":"string"},"_http":"POST /dedicated_account"},{"name":"refund_create","description":"Refund a transaction, fully or partially","arguments":{"transaction":"string","amount":"number","currency":"string"},"_http":"POST /refund"},{"name":"transaction_initialize","description":"Start a payment and get a checkout link","arguments":{"email":"string","amount":"number","currency":"string","reference":"string"},"_http":"POST /transaction/initialize"},{"name":"transaction_verify","description":"Check whether a payment went through, using its reference","arguments":{"reference":"string"},"_http":"GET /transaction/verify/{reference}"},{"name":"transfer_initiate","description":"Send money from the balance to a saved recipient","arguments":{"amount":"number","recipient":"string","reference":"string","reason":"string","source":"string","currency":"string"},"_http":"POST /transfer"},{"name":"transferrecipient_create","description":"Save a bank account as a payout recipient","arguments":{"type":"string","name":"string","account_number":"string","bank_code":"string","currency":"string"},"_http":"POST /transferrecipient"}];
+const U="<reserved_0>", A="<reserved_1>", T="<reserved_2>", C="<reserved_3>", R="<reserved_5>";
+const MJ = JSON.stringify(MENU);
+const $ = s => document.querySelector(s);
+const NGN = n => "₦" + Number(n||0).toLocaleString("en-NG",{minimumFractionDigits:2,maximumFractionDigits:2});
+
+let balance = 2450000;
+let pending = null;          // {name, arguments}
+let busy = false;
+
+const PARAMS = {"nano-tools":"208M","mini-tools":"503M","nano":"208M","mini":"503M"};
+const SCORE = [
+  ["Picks the right tool",        "9%",  "91%"],
+  ["Uses only declared arguments","0%",  "96%"],
+  ["Edits one field, not all",    "0%", "100%"],
+  ["Stays quiet when no tool fits","0%", "100%"],
+  ["Asks instead of guessing",    "0%", "100%"],
+];
+
+const HINTS = [
+  ["Send money",   "Abeg send 5000 naira give Chidi."],
+  ["Check balance","How much money dey my account now?"],
+  ["Verify (Yor)", "Se ayewo boya owo naa ti wole, itokasi ni TRX_9912."],
+  ["Who owns it? (Hau)", "Wa ke da lambar asusu 0123456789 a GTBank?"],
+  ["Pay fees (Igb)","Zipu naira puku ise na RCP_8812 maka ugwo ulo akwukwo."],
+  ["Refund part",  "Refund transaction TRX_4410, only 2000 naira of it."],
+  ["Just say thanks","Thank you o, you don try well well."],
+];
+
+const CHIPS = [
+  "Abeg send 5000 naira give Chidi.",
+  "Se ayewo boya owo naa ti wole, itokasi ni TRX_9912.",
+  "Wa ke da lambar asusu 0123456789 a GTBank?",
+  "Zipu naira puku ise na RCP_8812 maka ugwo ulo akwukwo.",
+  "Refund transaction TRX_4410, only 2000 naira of it.",
+  "Thank you o, you don try well well.",
+];
+
+/* ---------------- onboarding ----------------
+   Four steps, and each one asks for an action rather than describing one. The last step puts a
+   real sentence in the box and sends it, so the tour ends with the app already working instead of
+   with a person staring at an empty field wondering what counts as a valid request. */
+const COACH = [
+  {t:"This is a pretend bank account",
+   x:"Nothing here is real. The money, the name, the transactions are all made up, so you can do "
+    +"whatever you like to it.",
+   sel:"#bal", top:true},
+  {t:"Talk to it in your own language",
+   x:"Pidgin, Yoruba, Igbo, Hausa or English. You do not have to phrase it carefully. Say it the "
+    +"way you would say it to a person.",
+   eg:"Abeg send 5000 naira give Chidi.", sel:".askwrap", top:true},
+  {t:"It fills in the form for you",
+   x:"A little box slides up with the details it worked out. Look it over. Nothing moves until "
+    +"you tap Confirm."},
+  {t:"Change your mind, in words",
+   x:"Say what is wrong and it fixes only that bit, leaving everything else exactly as it was. "
+    +"That is the hard part, and it is the bit worth trying to break.",
+   eg:"No, make am 2500 instead."},
+];
+let cstep = 0;
+
+function coachShow(){
+  const c = COACH[cstep];
+  $("#ctitle").textContent = c.t;
+  $("#ctext").innerHTML = esc(c.x) + (c.eg ? '<span class="eg">&ldquo;' + esc(c.eg) + '&rdquo;</span>' : "");
+  $("#cdots").innerHTML = COACH.map((_, i) => '<i class="' + (i === cstep ? "on" : "") + '"></i>').join("");
+  $("#cnext").textContent = cstep === COACH.length - 1 ? "Try it" : "Next";
+  $("#coachcard").classList.toggle("top", !!c.top);
+  const spot = $("#spot"), coach = $("#coach");
+  const el = c.sel ? document.querySelector(c.sel) : null;
+  if(el){
+    const p = $(".phone").getBoundingClientRect(), r = el.getBoundingClientRect();
+    const x = r.left - p.left - 5, y = r.top - p.top - 5, w = r.width + 10, h = r.height + 10;
+    spot.style.display = "";
+    Object.assign(spot.style, {left:x+"px", top:y+"px", width:w+"px", height:h+"px"});
+    // Four panels boxing in the hole: above it, below it, and the two strips beside it.
+    Object.assign($("#sh-t").style, {left:0, top:0, width:"100%", height:Math.max(0,y)+"px"});
+    Object.assign($("#sh-b").style, {left:0, top:(y+h)+"px", width:"100%",
+                                     height:Math.max(0, p.height-(y+h))+"px"});
+    Object.assign($("#sh-l").style, {left:0, top:y+"px", width:Math.max(0,x)+"px", height:h+"px"});
+    Object.assign($("#sh-r").style, {left:(x+w)+"px", top:y+"px",
+                                     width:Math.max(0, p.width-(x+w))+"px", height:h+"px"});
+    coach.classList.remove("full");
+  } else {
+    spot.style.display = "none";
+    coach.classList.add("full");
+  }
+  coach.classList.add("on");
+}
+function coachEnd(run){
+  $("#coach").classList.remove("on", "full");
+  try{ localStorage.setItem("morena-pay-tour", "done"); }catch(_){}
+  if(run) fire("Abeg send 5000 naira give Chidi.");
+}
+$("#cnext").onclick = () => { cstep++; cstep >= COACH.length ? coachEnd(true) : coachShow(); };
+$("#cskip").onclick = () => coachEnd(false);
+$("#replay").onclick = () => { cstep = 0; coachShow(); };
+
+/* ---------------- plain english ----------------
+   The same judgement the technical panel makes, said the way you would say it out loud. It still
+   reports a failure as a failure: a demo that only ever congratulates itself is not a demo, it is
+   an advert, and this model does get things wrong. */
+function plain(rows){
+  if(document.body.dataset.tab === "app") $("#tabdot").classList.add("on");
+  $("#plain").innerHTML = rows.map(([kind, title, body]) =>
+    '<div class="plain ' + kind + '"><div class="ic">' +
+    (kind === "good" ? "&#10003;" : kind === "bad" ? "&#33;" : "&#9679;") +
+    '</div><div><b>' + esc(title) + "</b><span>" + esc(body) + "</span></div></div>").join("");
+}
+const PRETTY = {
+  transfer_initiate:"send money", transferrecipient_create:"save a recipient",
+  refund_create:"send a refund", transaction_initialize:"start a payment",
+  transaction_verify:"check a payment", bank_resolveAccountNumber:"look up who owns an account",
+  customer_create:"create a customer", dedicatedAccount_create:"open a virtual account",
+  bank_list:"list the banks", balance_fetch:"check your balance",
+};
+
+/* ---------------- model plumbing ---------------- */
+async function health(){
+  const el = $("#modelName");
+  try{
+    const p = await (await fetch("/props")).json();
+    const n = (p.model_path || "model").split(/[\\/]/).pop().replace(/\.gguf$/,"");
+    el.textContent = n; el.className = "status live";
+    const key = Object.keys(PARAMS).find(k => n.indexOf(k) === 0);
+    if(key) $("#lede").innerHTML = "A <b>" + PARAMS[key] + " parameter</b> model, running on this " +
+      "laptop CPU, turning Pidgin, Yoruba, Igbo and Hausa into real API calls. " +
+      "No cloud, no GPU, no network.";
+  }catch(e){
+    el.textContent = "model offline"; el.className = "status down";
+  }
+}
+
+async function complete(prompt, n){
+  const r = await fetch("/completion",{method:"POST",headers:{"content-type":"application/json"},
+    // No repeat_penalty. It was added to stop a degenerate "txn_txn_txn" reference and it did,
+    // but a penalty on repeated tokens is a penalty on braces and quotes, which is what JSON is
+    // mostly made of. It pushed the model into an invalid byte immediately after emitting a
+    // perfectly correct patch, and llama-server then rejected the whole response with a 500.
+    // The truncation it was meant to fix is handled by the larger n_predict instead.
+    body:JSON.stringify({prompt, n_predict:n||260, temperature:0, top_p:1, cache_prompt:true,
+      stop:[U, R, "<|tool_result|>", "<|user|>"]})});
+  if(!r.ok) throw new Error("model returned " + r.status);
+  return ((await r.json()).content || "").trim();
+}
+
+/* The model still emits the legacy <|tool_call|> string after a reserved prefill, so this looks
+   for the first balanced brace rather than requiring the marker. */
+function firstJSON(text){
+  let s = text;
+  for(const st of [R,"<|tool_result|>",A,"<|assistant|>",U]) s = s.split(st)[0];
+  const i = s.indexOf("{"); if(i<0) return null;
+  let d=0, q=false, e=false;
+  for(let k=i;k<s.length;k++){
+    const c=s[k];
+    if(e){e=false;continue}
+    if(c==="\\"){e=true;continue}
+    if(c==='"'){q=!q;continue}
+    if(q) continue;
+    if(c==="{")d++; else if(c==="}"){d--; if(!d){ try{return JSON.parse(s.slice(i,k+1))}catch(_){return null} }}
+  }
+  return null;
+}
+
+/* ---------------- chat ---------------- */
+function bubble(cls, html){
+  const d = document.createElement("div");
+  d.className = "msg " + cls; d.innerHTML = html;
+  $("#msgs").appendChild(d);
+  $("#scroll").scrollTop = $("#scroll").scrollHeight;
+  return d;
+}
+const esc = s => String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+
+async function ask(){
+  const q = $("#q").value.trim();
+  if(!q || busy) return;
+  busy = true; $("#go").disabled = true; $("#q").value = ""; sizeInput();
+  $("#hints").classList.add("gone");
+  bubble("me", esc(q));
+  const think = bubble("bot", '<span class="dots"><i></i><i></i><i></i></span>');
+
+  const editing = !!pending;
+  const prompt = editing
+    ? U+"\n"+T+MJ+"\n"+A+C+JSON.stringify(pending)+U+"\n"+q+"\n"+A
+    : U+"\n"+T+MJ+"\n"+q+"\n"+A;
+
+  lastPrompt = prompt;
+  try{
+    const raw = await complete(prompt, editing ? 200 : 280);
+    think.remove();
+    editing ? applyEdit(raw) : await applyCall(raw, q);
+  }catch(err){
+    think.remove();
+    bubble("bot", esc(err.message) + '<br><span style="opacity:.7">Start it with <code>./morena --ui</code></span>');
+    verdict([["bad", err.message]]);
+  }
+  busy = false; sizeInput();
+  // Only take focus back when no sheet is waiting; otherwise this is what summons the keyboard
+  // that pushed the sheet up in the first place.
+  if(!$("#sheet").classList.contains("up")) $("#q").focus();
+}
+
+/* ---------------- first call ---------------- */
+async function applyCall(raw, q, retried){
+  const call = firstJSON(raw);
+  const called = raw.includes(C) || raw.includes("<|tool_call|>") || !!call;
+
+  // A truncated or malformed call still LOOKS like a call. Without this it falls through to the
+  // "answered in words" branch, which prints raw JSON into the chat as though the assistant had
+  // said it, and then congratulates it for answering. Both are wrong, and the JSON is the last
+  // thing someone poking at a bank app should ever see.
+  const looksJson = /^\s*[\{\[]/.test(raw) || /"name"\s*:|"arguments"\s*:|"op"\s*:/.test(raw);
+  if(looksJson && !call && !retried){
+    // One silent retry with more room. A half-finished call is a sampling accident, not a verdict
+    // on the request, and making a person retype a sentence because a token budget ran out is a
+    // bad way to introduce a model. Only once: twice would hide a real problem.
+    try{
+      const again = await complete(lastPrompt, 400);
+      return applyCall(again, q, true);
+    }catch(_){}
+  }
+  if(looksJson && !call){
+    bubble("bot","Sorry, that one cut off halfway. Try am again.");
+    verdict([["bad","Started a tool call and did not finish it. The JSON is truncated."]]);
+    plain([["bad","Its answer got cut off",
+            "It began filling in the form and stopped mid-way, so there was nothing to show you. "
+            + "Ask again and it usually gets there."]]);
+    $("#callJson").style.display = "";
+    $("#callJson").textContent = raw.slice(0, 400);
+    return;
+  }
+
+  if(!called || !call){
+    const txt = raw.split(/<\|?reserved|<\|/)[0].trim() || "Okay.";
+    bubble("bot", esc(txt.slice(0,300)));
+    // Not calling a tool is only a success when no tool was needed. A clarifying question is a
+    // different thing, and sometimes a wrong thing: this model over-asks, including for details
+    // the request already contained. Saying "it just answered" for both would be flattering it.
+    const asked = /\?\s*$/.test(txt.trim()) || txt.includes("?");
+    verdict([[asked ? "bad" : "good",
+              asked ? "Asked a question instead of calling anything."
+                    : "Answered in plain language. No tool called, and none was needed."]]);
+    plain([asked
+      ? ["", "It asked you a question",
+         "It wants a detail before it acts. Sometimes that is the right call. Sometimes it is "
+         + "being over-careful and the detail was already in what you said, which is a known "
+         + "weak spot in this version."]
+      : ["good", "It just answered",
+         "Nothing here needed the bank. It recognised that and replied instead of poking at "
+         + "your account, which is harder than it sounds."]]);
+    $("#callJson").style.display = "none";
+    return;
+  }
+
+  const known = MENU.find(t => t.name === call.name);
+  const declared = known ? Object.keys(known.arguments||{}) : [];
+  const got = Object.keys(call.arguments||{});
+  const bad = got.filter(k => !declared.includes(k));
+  const V = [];
+  V.push(known ? ["good", "Picked " + call.name + ", which is in the menu."]
+               : ["bad",  "Invented the tool " + (call.name||"?") + ". It is not in the menu."]);
+  if(known) V.push(bad.length ? ["bad","Arguments the tool never declared: " + bad.join(", ")]
+                              : ["good","Every argument is one the schema declares."]);
+  verdict(V);
+  const nice = PRETTY[call.name] || call.name;
+  plain(known
+    ? [["good","It understood: " + nice,
+        "It picked the right action out of ten it had never seen before, and filled in the "
+        + "details from what you said."]]
+    : [["bad","It made up an action",
+        "There is no \u201c" + (call.name || "?") + "\u201d in this app. It invented one, which is "
+        + "exactly the kind of mistake worth catching."]]);
+  $("#callJson").style.display = "";
+  $("#callJson").textContent = JSON.stringify(call, null, 1);
+
+  if(!known){ bubble("bot","I no fit do that one with the tools wey I get."); return; }
+
+  pending = {name: call.name, arguments: Object.assign({}, call.arguments)};
+  const act = ACTIONS[call.name];
+  if(act && act.instant){ act.run(call.arguments); pending = null; return; }
+  bubble("bot", (act ? act.say : "Here is what I will do.") + " Check am before I send.");
+  openSheet();
+}
+
+/* ---------------- the edit ---------------- */
+function applyEdit(raw){
+  const o = firstJSON(raw);
+  if(!o){ bubble("bot","I no catch that one, abeg talk am again."); return; }
+
+  if(o.op === "cancel"){
+    bubble("bot","Okay, I don cancel am.");
+    verdict([["good","Read the correction as a cancel and dropped the call."]]);
+    plain([["good","It cancelled it","It took that as calling the whole thing off, and dropped it."]]);
+    closeSheet(); pending = null; return;
+  }
+  if(o.op === "confirm"){ doConfirm(); return; }
+
+  const before = Object.assign({}, pending.arguments);
+  let changed = {}, unset = [], minimal = false;
+
+  if(o.op === "patch"){
+    changed = o.set || {}; unset = o.unset || []; minimal = true;
+  } else if(o.arguments){
+    for(const [k,v] of Object.entries(o.arguments))
+      if(JSON.stringify(before[k]) !== JSON.stringify(v)) changed[k] = v;
+  }
+
+  const after = Object.assign({}, before, changed);
+  for(const k of unset) delete after[k];
+  pending.arguments = after;
+
+  const V = [];
+  V.push(minimal
+    ? ["good","Sent back only the fields that change. " + JSON.stringify(o.set||o.unset)]
+    : ["bad","Re-sent the whole call instead of a patch."]);
+  // The failure this demo exists to show: a field nobody mentioned quietly changing value.
+  const touched = new Set([...Object.keys(changed), ...unset]);
+  const corrupted = Object.keys(before).filter(k => !touched.has(k)
+      && JSON.stringify(after[k]) !== JSON.stringify(before[k]));
+  V.push(corrupted.length
+    ? ["bad","Changed fields you never mentioned: " + corrupted.join(", ")]
+    : ["good","Every other field kept its value."]);
+  verdict(V);
+  const names = [...Object.keys(changed), ...unset].map(k => LABEL[k] || k);
+  plain(corrupted.length
+    ? [["bad","It changed something you did not ask about",
+        "You asked about " + (names.join(" and ") || "one thing") + ", but it also altered "
+        + corrupted.join(" and ") + ". That is the failure this whole demo is built to show."]]
+    : [["good","It changed only " + (names.join(" and ") || "that one thing"),
+        "Everything else on the form is untouched. Most small models rewrite the whole thing from "
+        + "memory here and quietly get a number wrong."]]);
+  $("#callJson").style.display = "";
+  $("#callJson").textContent = JSON.stringify(o, null, 1);
+
+  bubble("bot","Done. I don update am.");
+  openSheet(Object.keys(changed), unset);
+}
+
+/* ---------------- sheet ---------------- */
+const LABEL = {amount:"Amount", recipient:"Recipient", reason:"Reason", currency:"Currency",
+  reference:"Reference", source:"Source", account_number:"Account number", bank_code:"Bank code",
+  email:"Email", transaction:"Transaction", name:"Name", type:"Type", country:"Country",
+  customer:"Customer", preferred_bank:"Bank"};
+
+function renderSheet(changed, removed){
+  changed = changed||[]; removed = removed||[];
+  const a = pending.arguments;
+  const act = ACTIONS[pending.name] || {};
+  $("#sheetTitle").textContent = act.title || "Confirm action";
+  $("#sheetSub").textContent = act.sub || "MORENA read your request and filled this in";
+  let h = "";
+  for(const [k,v] of Object.entries(a)){
+    const cls = changed.includes(k) ? "changed" : "";
+    const val = (k === "amount" && !isNaN(v)) ? NGN(v) : esc(typeof v === "string" ? v : JSON.stringify(v));
+    h += '<div class="frow '+cls+'"><span class="k">'+(LABEL[k]||k)+'</span>'+
+         '<span class="v">'+val+(cls?'<span class="pill changed">changed</span>':'')+'</span></div>';
+  }
+  for(const k of removed)
+    h += '<div class="frow removed"><span class="k">'+(LABEL[k]||k)+'</span>'+
+         '<span class="v">removed<span class="pill removed">removed</span></span></div>';
+  $("#fields").innerHTML = h;
+}
+function openSheet(changed, removed){
+  // Drop focus before the sheet animates in. On a phone the ask bar still holds focus from the
+  // message that triggered this, so the on-screen keyboard is up, and it shoves the confirm sheet
+  // halfway off the screen. Nothing on the sheet needs typing, so the keyboard should not be
+  // there at all.
+  if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  renderSheet(changed, removed);
+  $("#sheet").classList.add("up"); $("#scrim").classList.add("up"); setPendBar(); }
+function closeSheet(){ $("#sheet").classList.remove("up"); $("#scrim").classList.remove("up");
+  setPendBar(); }
+function setPendBar(){
+  const open = $("#sheet").classList.contains("up");
+  $("#pendbar").classList.toggle("on", !!pending && !open);
+  if(pending){
+    const a = ACTIONS[pending.name] || {};
+    $("#pendtext").textContent = (a.title || "Action") + " waiting";
+  }
+}
+
+/* ---------------- what each tool does to the app ---------------- */
+const ACTIONS = {
+  transfer_initiate: {title:"Confirm transfer", sub:"Money leaves your main account",
+    say:"I don set up the transfer."},
+  transferrecipient_create: {title:"Save recipient", sub:"Adds a payout recipient",
+    say:"I go save this person."},
+  refund_create: {title:"Confirm refund", sub:"Sends money back to the payer",
+    say:"I don line up the refund."},
+  transaction_initialize: {title:"Start a payment", sub:"Creates a checkout link",
+    say:"I go start the payment."},
+  transaction_verify: {title:"Verify payment", sub:"Checks a reference", say:"Make I check am."},
+  bank_resolveAccountNumber: {title:"Look up account", sub:"Resolves the account holder name",
+    say:"Make I find who get the account."},
+  customer_create: {title:"Create customer", sub:"Adds a customer record", say:"I go create the customer."},
+  dedicatedAccount_create: {title:"New virtual account", sub:"Dedicated account number",
+    say:"I go create the account."},
+  bank_list: {title:"List banks", sub:"Banks available", say:"Here be the banks."},
+  balance_fetch: {instant:true, run(){
+      bubble("bot","Your balance na <b>"+NGN(balance)+"</b>.");
+    }},
+};
+
+function doConfirm(){
+  const a = pending ? pending.arguments : null;
+  const name = pending ? pending.name : "";
+  const act = ACTIONS[name] || {};
+  closeSheet();
+  if(a && name === "transfer_initiate" && !isNaN(a.amount)){
+    balance -= Number(a.amount);
+    $("#bal").textContent = NGN(balance);
+    addTx(a.recipient || "Recipient", Number(a.amount), a.reason || "Transfer");
+    bubble("bot","Sent. "+NGN(a.amount)+" don comot go "+esc(a.recipient||"recipient")+".");
+    receipt("Transfer sent", a.recipient || "Recipient", Number(a.amount), a);
+  } else if(a && name === "refund_create" && !isNaN(a.amount)){
+    addTx("Refund " + (a.transaction||""), Number(a.amount), "Refund");
+    bubble("bot","Refund of "+NGN(a.amount)+" don go out.");
+    receipt("Refund sent", a.transaction || "Transaction", Number(a.amount), a);
+  } else {
+    bubble("bot","Done.");
+    receipt(act.title || "Done", "", null, a || {});
+  }
+  pending = null;
+  setPendBar();
+}
+
+function receipt(title, who, amount, args){
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2,"0") + ":" + String(now.getMinutes()).padStart(2,"0");
+  // Everything except the headline figures, shown the way a bank app shows a receipt. Skips the
+  // fields already in the header so the card does not repeat itself.
+  const skip = new Set(["amount","recipient","transaction"]);
+  const rows = Object.entries(args || {})
+    .filter(([k,v]) => !skip.has(k) && v !== "" && v != null)
+    .map(([k,v]) => '<div class="rrow"><span>'+(LABEL[k]||k)+"</span><b>"+
+        esc(typeof v === "string" ? v : JSON.stringify(v))+"</b></div>").join("");
+  const d = document.createElement("div");
+  d.className = "receipt";
+  d.innerHTML =
+    '<div class="rtop"><div class="tick">&#10003;</div><div><b>'+esc(title)+"</b>"+
+      (who ? "<span>"+esc(who)+"</span>" : "")+"</div>"+
+      (amount != null && !isNaN(amount) ? '<div class="ramt">'+NGN(amount)+"</div>" : "")+
+    '</div><div class="rbody">'+ rows +
+    '<div class="rfoot"><span>Today '+hh+"</span><span>MORENA Pay</span></div></div>";
+  $("#msgs").appendChild(d);
+  $("#scroll").scrollTop = $("#scroll").scrollHeight;
+}
+
+function addTx(who, amt, why){
+  const init = String(who).replace(/[^A-Za-z]/g,"").slice(0,2).toUpperCase() || "TX";
+  const d = document.createElement("div");
+  d.className = "tx out";
+  d.innerHTML = '<div class="txi">'+esc(init)+'</div><div class="txm"><b>'+esc(who)+
+    '</b><span>Just now &middot; '+esc(why)+'</span></div><div class="txa">'+NGN(amt)+'</div>';
+  $("#txs").prepend(d);
+}
+
+/* ---------------- inspector ---------------- */
+function verdict(rows){
+  $("#verdicts").innerHTML = rows.map(([c,t]) =>
+    '<div class="verd '+c+'">'+(c==="good"?"&#10003;":"&#33;")+" <span>"+esc(t)+"</span></div>").join("");
+}
+
+/* ---------------- wiring ---------------- */
+$("#chips").innerHTML = HINTS.map((h,i)=>'<button class="chip" data-i="'+i+'">'+esc(h[0])+"</button>").join("");
+$("#chips").onclick = e => { const b=e.target.closest("[data-i]"); if(!b) return; fire(HINTS[+b.dataset.i][1]); };
+
+$("#hints").innerHTML = HINTS.map((h,i)=>'<button class="hint" data-h="'+i+'">'+esc(h[0])+"</button>").join("");
+$("#hints").onclick = e => { const b=e.target.closest("[data-h]"); if(!b) return; fire(HINTS[+b.dataset.h][1]); };
+
+function fire(text){ $("#q").value = text; sizeInput(); ask(); }
+function sizeInput(){
+  const t = $("#q");
+  t.style.height = "auto";
+  t.style.height = Math.min(t.scrollHeight, 96) + "px";
+  // The send button is only live when there is something to send, so the control says whether
+  // the app is ready rather than looking identical either way.
+  $("#go").disabled = !t.value.trim() || busy;
+}
+document.querySelectorAll("[data-ask]").forEach(b => b.onclick = () => fire(b.dataset.ask));
+$("#go").onclick = ask;
+$("#cancel").onclick = () => { pending=null; closeSheet(); bubble("bot","Okay, I no go do am."); };
+// Collapse but keep the call, so the ask bar is reachable and the correction still has something
+// to correct.
+$("#grab").onclick = () => { closeSheet(); $("#q").focus(); };
+$("#pendbar").onclick = () => { if(pending) openSheet(); };   // no args: plain view
+// Tapping the dimmed area collapses the sheet without discarding the call, like the handle.
+$("#scrim").onclick = () => closeSheet();
+$("#confirm").onclick = doConfirm;
+$("#q").addEventListener("keydown", e => {
+  if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); ask(); }
+});
+$("#q").addEventListener("input", sizeInput);
+$("#scorecard").innerHTML = '<div class="sc"><span class="h">&nbsp;</span>' +
+  '<span class="h n">before</span><span class="h n">after</span>' +
+  SCORE.map(r => '<span>'+r[0]+'</span><span class="n was">'+r[1]+'</span><span class="n now">'+r[2]+'</span>').join("") +
+  "</div>";
+$("#techtoggle").onclick = () => {
+  const on = !$("#techtoggle").classList.contains("on");
+  $("#techtoggle").classList.toggle("on", on);
+  $("#techwrap").classList.toggle("on", on);
+  $("#techwrap2").classList.toggle("on", on);
+  $("#techtoggle").lastChild.textContent = on ? "Hide the technical view" : "Show the technical view";
+  try{ localStorage.setItem("morena-pay-tech", on ? "1" : ""); }catch(_){}
+};
+try{ if(localStorage.getItem("morena-pay-tech")) $("#techtoggle").click(); }catch(_){}
+
+sizeInput();
+// When a keyboard is open the layout viewport stays tall while the VISIBLE area shrinks, so a
+// bottom-anchored ask bar ends up underneath it. Measuring the visual viewport and setting the
+// phone to that height keeps the bar and the sheet where they can be seen and tapped.
+if(window.visualViewport){
+  const fit = () => {
+    const vv = window.visualViewport;
+    if(window.innerWidth > 940){ document.querySelector(".phone").style.height = ""; return; }
+    // Leave room for the tab bar, which is fixed to the bottom. Without this the phone is a tab
+    // bar taller than the space it has, and the confirm sheet parks its top edge on screen
+    // instead of sitting fully off it.
+    const tabs = document.querySelector(".tabs");
+    const th = tabs && getComputedStyle(tabs).display !== "none" ? tabs.offsetHeight : 0;
+    document.querySelector(".phone").style.height = Math.round(vv.height - th) + "px";
+  };
+  window.visualViewport.addEventListener("resize", fit);
+  window.visualViewport.addEventListener("scroll", fit);
+  window.addEventListener("orientationchange", () => setTimeout(fit, 250));
+  fit();
+}
+
+// Tabs. The dot on "What happened" lights up when there is something new to read there while the
+// person is looking at the app, so the explanation is discoverable without nagging.
+function setTab(t){
+  document.body.dataset.tab = t;
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === t));
+  if(t === "explain") $("#tabdot").classList.remove("on");
+  window.scrollTo(0, 0);
+}
+$("#tabs").onclick = e => { const b = e.target.closest("[data-tab]"); if(b) setTab(b.dataset.tab); };
+setTab("app");
+
+health();
+let seen = null;
+try{ seen = localStorage.getItem("morena-pay-tour"); }catch(_){}
+if(!seen) setTimeout(coachShow, 450);
+</script>
+</body>
+</html>

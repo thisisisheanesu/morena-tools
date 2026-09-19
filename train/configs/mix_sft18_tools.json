@@ -1,0 +1,15 @@
+{
+ "_comment": "SFT v18 tools arm (docs/44). Fine-tunes the released nano and mini on 20,000 records over 20,000 DISTINCT tool menus in five naming conventions, to fix three measured failures: 9pct correct tool on a menu built from the real Paystack OpenAPI spec, a patch that re-emits the whole call and corrupted an untouched amount 6 runs out of 6, and over-calling on requests that need no tool. sft17 is replayed at 30pct so the general instruct and refusal behaviour the release was judged on does not decay while the tool capability is learned; a tools-only run is the fastest way to get a model that calls tools well and can no longer hold a conversation.",
+ "sources": {
+  "sft18_tools": {
+   "weight": 70,
+   "path": "sft18_tools",
+   "required": true
+  },
+  "sft17": {
+   "weight": 30,
+   "path": "sft17",
+   "required": true
+  }
+ }
+}

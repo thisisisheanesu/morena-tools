@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MORENA Tool Console</title>
+<style>
+:root{
+  --bg:#f6f5f2; --panel:#fff; --ink:#15150f; --mute:#6a6a60; --line:#e2e0d9;
+  --accent:#c2410c; --accent-soft:#fff1e8; --ok:#15803d; --ok-soft:#eefaf1;
+  --warn:#a16207; --warn-soft:#fefadf; --code:#f2f1ec;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#14140f; --panel:#1c1c16; --ink:#efeee6; --mute:#9a998c; --line:#2e2e26;
+    --accent:#fb923c; --accent-soft:#33210f; --ok:#4ade80; --ok-soft:#14261a;
+    --warn:#fbbf24; --warn-soft:#2a220b; --code:#232219;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14140f; --panel:#1c1c16; --ink:#efeee6; --mute:#9a998c; --line:#2e2e26;
+  --accent:#fb923c; --accent-soft:#33210f; --ok:#4ade80; --ok-soft:#14261a;
+  --warn:#fbbf24; --warn-soft:#2a220b; --code:#232219;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;}
+.wrap{max-width:1080px;margin:0 auto;padding:28px 16px 80px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:baseline;justify-content:space-between;
+  border-bottom:2px solid var(--ink);padding-bottom:12px;margin-bottom:22px}
+h1{font-size:23px;margin:0;letter-spacing:-.01em}
+h1 span{color:var(--accent)}
+.sub{color:var(--mute);font-size:13px}
+.status{font:12px/1 var(--mono);padding:5px 9px;border:1px solid var(--line);border-radius:999px;color:var(--mute)}
+.status.live{color:var(--ok);border-color:var(--ok)}
+.status.down{color:var(--accent);border-color:var(--accent)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:860px){.grid{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+.card h2{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--mute);margin:0 0 12px}
+textarea,input,select{width:100%;font:14px/1.5 inherit;color:var(--ink);background:var(--bg);
+  border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+textarea{resize:vertical;min-height:70px}
+button{font:13px/1 inherit;font-weight:600;padding:9px 15px;border-radius:8px;cursor:pointer;
+  border:1px solid var(--ink);background:var(--ink);color:var(--bg)}
+button:hover{opacity:.87}
+button.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.chip{font:12px/1 inherit;padding:6px 10px;border:1px solid var(--line);border-radius:999px;
+  background:transparent;color:var(--mute);cursor:pointer;font-weight:500}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+pre{font:12.5px/1.5 var(--mono);background:var(--code);border:1px solid var(--line);border-radius:8px;
+  padding:11px;overflow-x:auto;margin:0;white-space:pre-wrap;word-break:break-word}
+.field{display:grid;grid-template-columns:132px 1fr;gap:8px;align-items:center;padding:7px 9px;
+  border-radius:7px;border:1px solid transparent;margin-bottom:4px}
+.field .k{font:12px var(--mono);color:var(--mute)}
+.field .v{font:13px var(--mono);word-break:break-word}
+.field.changed{background:var(--accent-soft);border-color:var(--accent)}
+.field.changed .k{color:var(--accent)}
+.field.kept{background:var(--ok-soft);border-color:var(--ok)}
+.field.dropped{background:var(--warn-soft);border-color:var(--warn);text-decoration:line-through;opacity:.75}
+.tag{display:inline-block;font:11px/1 var(--mono);padding:4px 7px;border-radius:5px;margin-left:7px;vertical-align:middle}
+.tag.changed{background:var(--accent);color:var(--bg)}
+.tag.kept{background:var(--ok);color:var(--bg)}
+.verdict{margin-top:12px;padding:11px 13px;border-radius:8px;font-size:13.5px;border:1px solid}
+.verdict.good{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.verdict.bad{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.tool-name{font:15px var(--mono);font-weight:600;color:var(--accent);margin-bottom:9px}
+details{margin-top:12px}
+summary{cursor:pointer;font-size:12px;color:var(--mute);letter-spacing:.05em;text-transform:uppercase}
+.note{color:var(--mute);font-size:12.5px;margin-top:9px}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid var(--line);
+  border-top-color:var(--accent);border-radius:50%;animation:s .7s linear infinite;vertical-align:-1px}
+@keyframes s{to{transform:rotate(360deg)}}
+.empty{color:var(--mute);font-size:13px;font-style:italic;padding:16px 0}
+.menu-tool{font:12px var(--mono);padding:5px 0;border-bottom:1px dotted var(--line)}
+.menu-tool b{color:var(--accent);font-weight:600}
+.menu-tool i{color:var(--mute);font-style:normal}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div>
+    <h1>MORENA <span>Tool Console</span></h1>
+    <div class="sub">Nigerian fintech tool calling, on a model small enough to run on this machine</div>
+  </div>
+  <div>
+    <span class="status" id="status">checking llama-server</span>
+    <button class="ghost" id="theme" style="margin-left:6px">theme</button>
+  </div>
+</header>
+
+<div class="card" style="margin-bottom:18px">
+  <h2>1 &middot; Ask for something</h2>
+  <textarea id="q" placeholder="Abeg send 5000 naira give Chidi."></textarea>
+  <div class="row" id="presets"></div>
+  <div class="row">
+    <button id="go">Send request</button>
+    <button class="ghost" id="clear">Clear</button>
+    <label style="margin-left:auto;font-size:12px;color:var(--mute)">temp
+      <input id="temp" type="number" value="0" min="0" max="1.5" step="0.1" style="width:66px;display:inline-block;margin-left:5px">
+    </label>
+  </div>
+  <div class="note">The menu below is the real Paystack OpenAPI spec. It was never in the training data, so a correct
+    call here means the model read the schema rather than recognised the names.</div>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h2>2 &middot; What it wants to do</h2>
+    <div id="call"><div class="empty">Nothing yet. Send a request above.</div></div>
+    <details id="promptbox" style="display:none">
+      <summary>the exact prompt sent</summary>
+      <pre id="prompt1"></pre>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>3 &middot; Change your mind</h2>
+    <div id="editpane"><div class="empty">Available once there is a pending call.</div></div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:18px">
+  <h2>The menu the model is given</h2>
+  <div id="menu"></div>
+</div>
+
+<script>
+const MENU = [{"name":"balance_fetch","description":"Check the available balance on the account","arguments":{},"_http":"GET /balance"},{"name":"bank_list","description":"List the banks available in a country","arguments":{"country":"string","currency":"string","type":"string"},"_http":"GET /bank"},{"name":"bank_resolveAccountNumber","description":"Look up the account holder name for a bank account number","arguments":{"account_number":"number","bank_code":"number"},"_http":"GET /bank/resolve"},{"name":"customer_create","description":"Create a customer record","arguments":{"email":"string"},"_http":"POST /customer"},{"name":"dedicatedAccount_create","description":"Create a dedicated virtual account number for a customer","arguments":{"customer":"string","preferred_bank":"string"},"_http":"POST /dedicated_account"},{"name":"refund_create","description":"Refund a transaction, fully or partially","arguments":{"transaction":"string","amount":"number","currency":"string"},"_http":"POST /refund"},{"name":"transaction_initialize","description":"Start a payment and get a checkout link","arguments":{"email":"string","amount":"number","currency":"string","reference":"string"},"_http":"POST /transaction/initialize"},{"name":"transaction_verify","description":"Check whether a payment went through, using its reference","arguments":{"reference":"string"},"_http":"GET /transaction/verify/{reference}"},{"name":"transfer_initiate","description":"Send money from the balance to a saved recipient","arguments":{"amount":"number","recipient":"string","reference":"string","reason":"string","source":"string","currency":"string"},"_http":"POST /transfer"},{"name":"transferrecipient_create","description":"Save a bank account as a payout recipient","arguments":{"type":"string","name":"string","account_number":"string","bank_code":"string","currency":"string"},"_http":"POST /transferrecipient"}];
+const U = "<reserved_0>", A = "<reserved_1>", T = "<reserved_2>", C = "<reserved_3>", R = "<reserved_5>";
+const MENU_JSON = JSON.stringify(MENU);
+const $ = s => document.querySelector(s);
+
+const PRESETS = [
+  ["Pidgin", "Abeg send 5000 naira give Chidi."],
+  ["Pidgin", "How much money dey my account now?"],
+  ["Yoruba", "Se ayewo boya owo naa ti wole, itokasi ni TRX_9912."],
+  ["Hausa", "Wa ke da lambar asusu 0123456789 a GTBank?"],
+  ["Igbo", "Zipu naira puku ise na RCP_8812 maka ugwo ulo akwukwo."],
+  ["English", "Refund transaction TRX_4410, only 2000 naira of it."],
+  ["Pidgin", "Thank you o, you don try well well."],
+];
+
+let pending = null;   // {name, arguments}
+
+/* ---------- llama-server ---------- */
+async function health(){
+  const el = $("#status");
+  try{
+    const r = await fetch("/props");
+    if(!r.ok) throw 0;
+    const p = await r.json();
+    let n = (p.model_path || p.default_generation_settings?.model || "model").split(/[\\/]/).pop();
+    el.textContent = n; el.className = "status live";
+  }catch(e){
+    el.textContent = "llama-server not reachable"; el.className = "status down";
+  }
+}
+
+async function complete(prompt, nPredict){
+  const body = {
+    prompt, n_predict: nPredict || 200,
+    temperature: parseFloat($("#temp").value) || 0,
+    top_p: 1.0, cache_prompt: true,
+    stop: [U, R, "<|tool_result|>", "<|user|>"]
+  };
+  const r = await fetch("/completion", {
+    method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify(body)
+  });
+  if(!r.ok) throw new Error("llama-server returned " + r.status);
+  const j = await r.json();
+  return (j.content || "").trim();
+}
+
+/* The model still emits the legacy <|tool_call|> string after a reserved prefill, so the parser
+   looks for the first brace rather than requiring the marker. */
+function firstJSON(text){
+  let s = text;
+  for(const stop of [R, "<|tool_result|>", A, "<|assistant|>", U]) s = s.split(stop)[0];
+  const i = s.indexOf("{");
+  if(i < 0) return null;
+  let depth = 0, inStr = false, esc = false;
+  for(let k = i; k < s.length; k++){
+    const ch = s[k];
+    if(esc){ esc = false; continue; }
+    if(ch === "\\"){ esc = true; continue; }
+    if(ch === '"'){ inStr = !inStr; continue; }
+    if(inStr) continue;
+    if(ch === "{") depth++;
+    else if(ch === "}"){ depth--; if(!depth){ try { return JSON.parse(s.slice(i, k+1)); } catch(e){ return null; } } }
+  }
+  return null;
+}
+
+/* ---------- step 1: the call ---------- */
+async function ask(){
+  const q = $("#q").value.trim();
+  if(!q) return;
+  $("#go").disabled = true;
+  $("#call").innerHTML = '<div class="empty"><span class="spin"></span> thinking</div>';
+  $("#editpane").innerHTML = '<div class="empty">Available once there is a pending call.</div>';
+  pending = null;
+  const prompt = U + "\n" + T + MENU_JSON + "\n" + q + "\n" + A;
+  $("#prompt1").textContent = prompt.replace(MENU_JSON, "[ ...the 10 tools... ]");
+  $("#promptbox").style.display = "";
+  try{
+    const raw = await complete(prompt);
+    render1(raw, q);
+  }catch(e){
+    $("#call").innerHTML = '<div class="verdict bad">' + e.message +
+      '<br>Start the model first: <code>./morena --ui</code></div>';
+  }
+  $("#go").disabled = false;
+}
+
+function render1(raw, q){
+  const call = firstJSON(raw);
+  const box = $("#call");
+  const calledSomething = raw.includes(C) || raw.includes("<|tool_call|>") || !!call;
+
+  if(!calledSomething || !call){
+    box.innerHTML = '<div class="verdict good">Answered without calling a tool.</div>' +
+      "<pre>" + esc(raw.slice(0, 600) || "(empty)") + "</pre>";
+    return;
+  }
+  const known = MENU.find(t => t.name === call.name);
+  const declared = known ? Object.keys(known.arguments || {}) : [];
+  const got = Object.keys(call.arguments || {});
+  const undeclared = got.filter(k => !declared.includes(k));
+
+  let h = '<div class="tool-name">' + esc(call.name || "(no name)") + "</div>";
+  if(!known){
+    h += '<div class="verdict bad">That tool is not in the menu. The model invented it.</div>';
+  } else if(undeclared.length){
+    h += '<div class="verdict bad">Arguments not declared by this tool: ' + esc(undeclared.join(", ")) + "</div>";
+  } else {
+    h += '<div class="verdict good">In the menu, and every argument is one the tool declares.</div>';
+  }
+  h += '<div style="margin-top:12px">';
+  for(const [k, v] of Object.entries(call.arguments || {}))
+    h += field(k, v, declared.includes(k) ? "" : "dropped");
+  h += "</div>";
+  box.innerHTML = h;
+
+  if(known){
+    pending = {name: call.name, arguments: Object.assign({}, call.arguments)};
+    renderEdit();
+  }
+}
+
+/* ---------- step 2: the edit ---------- */
+function renderEdit(){
+  $("#editpane").innerHTML =
+    '<div class="note" style="margin:0 0 10px">A call is pending. Correct one detail and watch what the model sends back. ' +
+    'It should return only the field you changed, and leave everything else alone.</div>' +
+    '<textarea id="edit" placeholder="No, make am 2500 instead."></textarea>' +
+    '<div class="row">' +
+      '<button id="goedit">Send correction</button>' +
+      '<button class="chip" data-edit="No, make am 2500 instead.">amount</button>' +
+      '<button class="chip" data-edit="Change the reason to school fees.">reason</button>' +
+      '<button class="chip" data-edit="Actually cancel it.">cancel</button>' +
+    "</div><div id=\"editout\"></div>";
+  $("#goedit").onclick = sendEdit;
+  document.querySelectorAll("[data-edit]").forEach(b =>
+    b.onclick = () => { $("#edit").value = b.dataset.edit; sendEdit(); });
+}
+
+async function sendEdit(){
+  const say = $("#edit").value.trim();
+  if(!say || !pending) return;
+  $("#goedit").disabled = true;
+  $("#editout").innerHTML = '<div class="empty"><span class="spin"></span> thinking</div>';
+  const prompt = U + "\n" + T + MENU_JSON + "\n" + A + C + JSON.stringify(pending) +
+                 U + "\n" + say + "\n" + A;
+  try{
+    const raw = await complete(prompt, 160);
+    render2(raw);
+  }catch(e){
+    $("#editout").innerHTML = '<div class="verdict bad">' + e.message + "</div>";
+  }
+  $("#goedit").disabled = false;
+}
+
+function render2(raw){
+  const o = firstJSON(raw);
+  const before = pending.arguments;
+  let h = "";
+  if(!o){
+    $("#editout").innerHTML = '<div class="verdict bad">No JSON came back.</div><pre>' + esc(raw.slice(0,400)) + "</pre>";
+    return;
+  }
+  if(o.op === "cancel"){
+    $("#editout").innerHTML = '<div class="verdict good">Cancelled the pending call.</div>';
+    pending = null; return;
+  }
+  if(o.op === "confirm"){
+    $("#editout").innerHTML = '<div class="verdict good">Confirmed, unchanged.</div>';
+    return;
+  }
+
+  let changed = {}, unset = [], minimal = false, shape = "";
+  if(o.op === "patch"){
+    changed = o.set || {}; unset = o.unset || [];
+    minimal = true; shape = "a patch, only the fields that change";
+  } else if(o.arguments){
+    shape = "a whole new call";
+    for(const [k, v] of Object.entries(o.arguments))
+      if(JSON.stringify(before[k]) !== JSON.stringify(v)) changed[k] = v;
+  }
+
+  const after = Object.assign({}, before, changed);
+  for(const k of unset) delete after[k];
+
+  h += '<div class="verdict ' + (minimal ? "good" : "bad") + '">Sent back ' + shape +
+       (minimal ? "." : ". A full call risks overwriting fields nobody touched.") + "</div>";
+  h += '<div style="margin-top:12px">';
+  for(const k of Object.keys(before)){
+    if(unset.includes(k)){ h += field(k, before[k], "dropped", "removed"); continue; }
+    const wasChanged = Object.prototype.hasOwnProperty.call(changed, k);
+    h += field(k, after[k], wasChanged ? "changed" : "kept", wasChanged ? "changed" : "untouched");
+  }
+  for(const k of Object.keys(changed)) if(!(k in before)) h += field(k, changed[k], "changed", "added");
+  h += "</div>";
+
+  const corrupted = Object.keys(before).filter(k =>
+    !unset.includes(k) && Object.prototype.hasOwnProperty.call(changed, k) === false &&
+    JSON.stringify(after[k]) !== JSON.stringify(before[k]));
+  h += '<div class="verdict ' + (corrupted.length ? "bad" : "good") + '" style="margin-top:10px">' +
+       (corrupted.length ? "Changed fields you never mentioned: " + esc(corrupted.join(", "))
+                         : "Every field you did not mention kept its value.") + "</div>";
+  h += '<details><summary>raw</summary><pre>' + esc(raw.slice(0, 500)) + "</pre></details>";
+  $("#editout").innerHTML = h;
+  pending.arguments = after;
+}
+
+/* ---------- bits ---------- */
+function field(k, v, cls, tag){
+  return '<div class="field ' + (cls || "") + '"><div class="k">' + esc(k) + "</div>" +
+    '<div class="v">' + esc(typeof v === "string" ? v : JSON.stringify(v)) +
+    (tag ? '<span class="tag ' + cls + '">' + tag + "</span>" : "") + "</div></div>";
+}
+function esc(s){ return String(s == null ? "" : s).replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+
+$("#presets").innerHTML = PRESETS.map((p,i) =>
+  '<button class="chip" data-i="' + i + '">' + p[0] + ": " + esc(p[1].slice(0, 34)) + (p[1].length>34?"...":"") + "</button>").join("");
+$("#presets").onclick = e => {
+  const b = e.target.closest("[data-i]"); if(!b) return;
+  $("#q").value = PRESETS[+b.dataset.i][1]; ask();
+};
+$("#menu").innerHTML = MENU.map(t =>
+  '<div class="menu-tool"><b>' + t.name + "</b> &nbsp;<i>" + esc(t.description || "") + "</i><br>&nbsp;&nbsp;" +
+  Object.entries(t.arguments || {}).map(([k,v]) => k + ":" + v).join(", ") + "</div>").join("");
+
+$("#go").onclick = ask;
+$("#clear").onclick = () => { $("#q").value=""; pending=null;
+  $("#call").innerHTML='<div class="empty">Nothing yet. Send a request above.</div>';
+  $("#editpane").innerHTML='<div class="empty">Available once there is a pending call.</div>';
+  $("#promptbox").style.display="none"; };
+$("#q").addEventListener("keydown", e => { if(e.key==="Enter" && (e.metaKey||e.ctrlKey)) ask(); });
+$("#theme").onclick = () => {
+  const cur = document.documentElement.getAttribute("data-theme");
+  const next = cur === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", next);
+  try{ localStorage.setItem("morena-theme", next); }catch(e){}
+};
+try{ const t = localStorage.getItem("morena-theme"); if(t) document.documentElement.setAttribute("data-theme", t); }catch(e){}
+health();
+</script>
+</div>
+</body>
+</html>

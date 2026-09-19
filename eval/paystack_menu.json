@@ -1,0 +1,168 @@
+{
+  "source": "PaystackOSS/openapi dist/paystack.yaml (real spec, 125 paths)",
+  "tools": [
+    {
+      "name": "balance_fetch",
+      "description": "Check the available balance on the account",
+      "arguments": {},
+      "_http": "GET /balance",
+      "aliases": [
+        "check_balance",
+        "get_balance",
+        "check_account_balance",
+        "account_balance",
+        "view_balance"
+      ]
+    },
+    {
+      "name": "bank_list",
+      "description": "List the banks available in a country",
+      "arguments": {
+        "country": "string",
+        "currency": "string",
+        "type": "string"
+      },
+      "_http": "GET /bank",
+      "aliases": [
+        "list_banks",
+        "get_banks",
+        "show_banks",
+        "banks"
+      ]
+    },
+    {
+      "name": "bank_resolveAccountNumber",
+      "description": "Look up the account holder name for a bank account number",
+      "arguments": {
+        "account_number": "number",
+        "bank_code": "number"
+      },
+      "_http": "GET /bank/resolve",
+      "aliases": [
+        "check_account_number",
+        "resolve_account",
+        "account_name",
+        "lookup_account",
+        "verify_account",
+        "get_account_name"
+      ]
+    },
+    {
+      "name": "customer_create",
+      "description": "Create a customer record",
+      "arguments": {
+        "email": "string"
+      },
+      "_http": "POST /customer",
+      "aliases": [
+        "add_customer",
+        "register_customer",
+        "new_customer"
+      ]
+    },
+    {
+      "name": "dedicatedAccount_create",
+      "description": "Create a dedicated virtual account number for a customer",
+      "arguments": {
+        "customer": "string",
+        "preferred_bank": "string"
+      },
+      "_http": "POST /dedicated_account",
+      "aliases": [
+        "create_virtual_account",
+        "virtual_account",
+        "dedicated_account",
+        "assign_account"
+      ]
+    },
+    {
+      "name": "refund_create",
+      "description": "Refund a transaction, fully or partially",
+      "arguments": {
+        "transaction": "string",
+        "amount": "number",
+        "currency": "string"
+      },
+      "_http": "POST /refund",
+      "aliases": [
+        "transaction_refund",
+        "refund",
+        "refund_transaction",
+        "reverse_payment"
+      ]
+    },
+    {
+      "name": "transaction_initialize",
+      "description": "Start a payment and get a checkout link",
+      "arguments": {
+        "email": "string",
+        "amount": "number",
+        "currency": "string",
+        "reference": "string"
+      },
+      "_http": "POST /transaction/initialize",
+      "aliases": [
+        "start_payment",
+        "create_payment",
+        "initialize_payment",
+        "make_payment",
+        "charge_customer"
+      ]
+    },
+    {
+      "name": "transaction_verify",
+      "description": "Check whether a payment went through, using its reference",
+      "arguments": {
+        "reference": "string"
+      },
+      "_http": "GET /transaction/verify/{reference}",
+      "aliases": [
+        "check_transaction",
+        "verify_transaction",
+        "check_transaction_status",
+        "check_payment",
+        "payment_status"
+      ]
+    },
+    {
+      "name": "transfer_initiate",
+      "description": "Send money from the balance to a saved recipient",
+      "arguments": {
+        "amount": "number",
+        "recipient": "string",
+        "reference": "string",
+        "reason": "string",
+        "source": "string",
+        "currency": "string"
+      },
+      "_http": "POST /transfer",
+      "aliases": [
+        "send_money",
+        "send_cash",
+        "transfer_money",
+        "make_transfer",
+        "send_funds",
+        "pay_person"
+      ]
+    },
+    {
+      "name": "transferrecipient_create",
+      "description": "Save a bank account as a payout recipient",
+      "arguments": {
+        "type": "string",
+        "name": "string",
+        "account_number": "string",
+        "bank_code": "string",
+        "currency": "string"
+      },
+      "_http": "POST /transferrecipient",
+      "aliases": [
+        "save_recipient",
+        "add_recipient",
+        "create_recipient",
+        "save_beneficiary",
+        "save"
+      ]
+    }
+  ]
+}
