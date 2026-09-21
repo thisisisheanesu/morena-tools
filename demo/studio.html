@@ -84,6 +84,15 @@ pre{font:11.5px/1.5 var(--mono);background:var(--bg);border:1px solid var(--line
 .dots i:nth-child(2){animation-delay:.18s} .dots i:nth-child(3){animation-delay:.36s}
 @keyframes b{0%,60%,100%{opacity:.25}30%{opacity:1}}
 .copied{font-size:12px;color:var(--ok);margin-left:8px}
+.seq{display:flex;flex-direction:column}
+.beat{position:relative;background:var(--film);color:#fff;padding:16px 16px 12px;
+  border-bottom:1px solid rgba(255,255,255,.1)}
+.beat:last-child{border-bottom:0}
+.beat .ratio{position:absolute;top:9px;left:12px;font:11px var(--mono);opacity:.7}
+.beat .dur{position:absolute;top:9px;right:12px;font:11px var(--mono);opacity:.7}
+.beat p{margin:16px 0 9px;font-size:13.5px;line-height:1.5;opacity:.95}
+.beattags{display:flex;flex-wrap:wrap;gap:5px}
+.beattags .tag{background:rgba(255,255,255,.1);color:#e9d5ff;border-color:rgba(255,255,255,.14)}
 </style>
 </head>
 <body>
@@ -94,14 +103,14 @@ pre{font:11.5px/1.5 var(--mono);background:var(--bg);border:1px solid var(--line
   </header>
   <p class="lede">Say what you want to film, in Pidgin, Yoruba, Igbo, Hausa or English. A 503M
     model running on a CPU turns it into a Seedance 2.5 instruction you can paste straight into
-    the API. The camera vocabulary is mined from 400 screenplays, so it uses the words the model
-    on the other end actually understands.</p>
+    the API. Ask for one shot or a sequence of them. The camera vocabulary is mined from 400
+    screenplays, so it uses the words the model on the other end actually understands.</p>
 
   <div class="grid">
     <div>
       <div class="card">
         <h2>What do you want to film?</h2>
-        <textarea id="q" placeholder="Mo fẹ́ fídíò ọmọdé tí wọ́n ń ṣeré bọ́ọ̀lù ní ojú títì fún Reels mi..."></textarea>
+        <textarea id="q" placeholder="Say it in Kinyarwanda, Swahili, Shona, English, Yoruba, Igbo, Hausa or Pidgin. Ask for one shot or a sequence..."></textarea>
         <div class="row">
           <button class="go" id="go" disabled>Write the shot</button>
           <span class="copied" id="copied"></span>
@@ -148,11 +157,12 @@ const ANGLE = ["low angle","high angle","overhead","eye level","dutch angle"];
 const RATIOS = ["16:9","9:16","1:1","4:3","3:4","21:9","9:21"];
 
 const EXAMPLES = [
-  ["Yoruba", "Mo fẹ́ kí o ṣèdá fídíò kan fún Reels mi níbi tí àwọn ọmọdé ṣe ń ṣeré bọ́ọ̀lù ní ojú títì."],
-  ["Pidgin", "Abeg make one video for my company website, show young person dey pay with phone for Lagos market."],
-  ["Hausa",  "Ina son bidiyo na mai sayar da kayan miya a kasuwa da safe, don shafin Instagram."],
-  ["Igbo",   "Achọrọ m vidiyo nke onye na-agba egwu n'okporo ámá nke Enugu maka TikTok."],
-  ["English","A thirty second cinematic piece of the coastline at golden hour for a tourism advert."],
+  ["Kinyarwanda", "Dushaka videwo yerekana uko ibiryo byacu biba: ibiryo biri mu isaro, hanyuma bikagururwa mu mpande, hanyuma umuntu akarya."],
+  ["Swahili",     "Nataka video ya soko la Kariakoo linavyoamka asubuhi, kisha mfanyabiashara akipanga nyanya zake, kisha mteja wa kwanza."],
+  ["Shona",       "Ndinoda vhidhiyo yemunda mangwanani, tozoona kukohwa, uye zvinopera nemotokari ichienda kumusika."],
+  ["English",     "Show the empty barber chair, then the cut in progress, then the customer's face at the end. For Reels."],
+  ["Yoruba",      "Mo fẹ́ kí o ṣèdá fídíò kan fún Reels mi níbi tí àwọn ọmọdé ṣe ń ṣeré bọ́ọ̀lù ní ojú títì."],
+  ["Pidgin",      "Abeg make one video for my company website, show young person dey pay with phone for Lagos market."],
 ];
 
 async function health(){
@@ -193,6 +203,17 @@ function firstJSON(text){
 
 function termsIn(text, list){ const l=(text||"").toLowerCase(); return list.filter(t=>l.includes(t)); }
 
+/* Seedance divides a clip with "Shot N". Splitting on it lets each beat get its own frame and its
+   own camera tags, which is the only way to see at a glance whether the sequence actually changes
+   framing or just repeats one shot three times. */
+function splitShots(p){
+  const parts = String(p||"").split(/\bShot\s*(\d+)\s*:/i);
+  if(parts.length < 3) return null;
+  const out = [];
+  for(let i=1;i<parts.length;i+=2) out.push({n: parts[i], text: (parts[i+1]||"").trim()});
+  return out.length > 1 ? out : null;
+}
+
 function render(call, asked){
   const a = (call && call.arguments) || {};
   const p = String(a.prompt || "");
@@ -211,20 +232,39 @@ function render(call, asked){
                                 : ["bad","Aspect ratio " + (ratio||"missing") + " is not one Seedance accepts."]);
   V.push((Number.isInteger(dur) && dur>=4 && dur<=30) ? ["good","Duration " + dur + "s, inside the 4 to 30 limit."]
                                 : ["bad","Duration " + (dur===undefined?"missing":dur) + " is outside 4 to 30."]);
+  const seq = splitShots(p);
+  if(seq){
+    const framings = seq.map(sh => [...termsIn(sh.text, SHOT), ...termsIn(sh.text, MOVE)].join("+"));
+    const varied = new Set(framings.filter(Boolean)).size > 1;
+    V.push(varied ? ["good", seq.length + " shots, each framed differently."]
+                  : ["bad", seq.length + " shots but the framing never changes, which is one shot cut up."]);
+  }
   if(asked) V.unshift(["bad","It asked a question first and had to be pushed to act."]);
   $("#verdicts").innerHTML = V.map(([c,t]) =>
     '<div class="verd '+c+'">'+(c==="good"?"&#10003;":"&#33;")+" <span>"+esc(t)+"</span></div>").join("");
 
   // Letterbox the preview to the requested ratio, so the shape of the clip is visible at a glance.
   const bar = ratio==="9:16" ? "0" : ratio==="1:1" ? "6%" : ratio==="21:9" ? "22%" : "12%";
-  const sound = /sound includes/i.test(p);
-  $("#shot").innerHTML =
-    '<div class="shot">' +
-      '<div class="frame" style="--bar:'+bar+'">' +
+  const shots = splitShots(p);
+  const per = shots && Number.isInteger(dur) ? Math.round(dur/shots.length) : null;
+  const frames = shots
+    ? '<div class="seq">' + shots.map(sh => {
+        const t = [...termsIn(sh.text, SHOT), ...termsIn(sh.text, ANGLE), ...termsIn(sh.text, MOVE)];
+        return '<div class="beat" style="--bar:'+bar+'">' +
+          '<div class="bars"><i></i><i></i></div>' +
+          '<span class="ratio">Shot '+esc(sh.n)+'</span>' +
+          (per ? '<span class="dur">~'+per+'s</span>' : "") +
+          "<p>"+esc(sh.text.split(". The camera")[0])+"</p>" +
+          '<div class="beattags">'+t.map(x=>'<span class="tag cam">'+esc(x)+"</span>").join("")+"</div>" +
+        "</div>";
+      }).join("") + "</div>"
+    : '<div class="frame" style="--bar:'+bar+'">' +
         '<div class="bars"><i></i><i></i></div>' +
         '<span class="ratio">'+esc(ratio||"?")+'</span><span class="dur">'+esc(dur||"?")+'s</span>' +
         "<p>"+esc(p.split(".")[0]||"(no prompt)")+".</p>" +
-      "</div>" +
+      "</div>";
+  $("#shot").innerHTML =
+    '<div class="shot">' + frames +
       '<div class="meta">' +
         [...shot,...ang,...move].map(t=>'<span class="tag cam">'+esc(t)+"</span>").join("") +
         '<span class="tag">'+esc(a.resolution||"1080p")+"</span>" +

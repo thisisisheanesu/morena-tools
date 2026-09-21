@@ -18,6 +18,9 @@ so what is checked is whether the instruction could be POSTED TO SEEDANCE AND WO
   audio       generate_audio true when the prompt names speech, music or a sound
   fixed       camera_fixed true only for a static shot
   language    is the spoken reply in the language the user wrote in
+  shots       when the brief asks for a sequence, did it write one, and does the framing actually
+              change between beats. Four identical wide shots is one shot cut up, and a check that
+              only counted "Shot N" markers would pass it.
 """
 import argparse, json, os, re, sys
 
@@ -48,14 +51,17 @@ LANG_WORDS = {
             "bidiyo", "bidiyon", "ku", "take", "gode"],
     "ibo": ["na", "ya", "ka", "maka", "gi", "nke", "ihe", "biko", "ndi", "anyi"],
     "pcm": ["abeg", "dey", "na", "make", "wetin", "don", "am", "sabi", "go", "fit", "una"],
-    "eng": ["the", "your", "a", "is", "we", "will", "video", "clip", "making"],
+    "en": ["the", "your", "a", "is", "we", "will", "video", "clip", "making", "creating", "now"],
     # These three were missing, and the corpus contains all of them. Every Zulu, Shona and
     # Swahili answer therefore scored as a language failure while being perfectly correct:
     # "Siyakwenza i-video yakho yomdlalo webhola emigwaqweni" is exactly right, and the detector
     # simply could not see it. A missing word list reads as a model defect, which is the worst
     # kind of measurement bug because it sends the next fix in the wrong direction.
     "zul": ["siyakwenza", "yakho", "i", "le", "kanye", "ngo", "uku", "isi", "wena", "futhi"],
-    "sna": ["tiri", "kuita", "yako", "ne", "iyi", "uye", "kwa", "vanhu", "ndi", "pa"],
+    "kin": ["turimo", "gukora", "videwo", "ngiye", "yawe", "rya", "mu", "ku", "n", "kandi",
+            "igaragaza", "kugukorera", "cyangwa", "neza"],
+    "sna": ["tiri", "kuita", "yako", "ne", "iyi", "uye", "kwa", "vanhu", "ndi", "pa",
+            "vhidhiyo", "tichagadzira", "yenyu", "iyoyo", "kuti", "yacho", "mangwanani"],
     "swh": ["tunatengeneza", "yako", "na", "ya", "wa", "kwa", "hii", "video", "ili", "katika"],
 }
 
@@ -75,6 +81,10 @@ DIACRITIC = [
     ("ibo", "\u1ee5\u1ee4\u1ecb\u1eca\u1e45\u1e44"),        # u i with under-dot, n with over-dot
     ("hau", "\u0199\u0198\u0257\u018a\u0253\u0181"),        # hooked k d b
 ]
+
+
+# English arrives as "en" from the corpus and "eng" from the older seeds; they are one language.
+ALIAS = {"eng": "en"}
 
 
 def lang_guess(t):
@@ -142,6 +152,15 @@ def wanted_ratio(brief):
     return None
 
 
+SHOTSPLIT = re.compile(r"\bShot\s*\d+\s*:", re.I)
+
+
+def shot_beats(prompt):
+    """Split a prompt into its Shot N sections; returns [] when it is a single shot."""
+    parts = SHOTSPLIT.split(prompt or "")
+    return [x.strip() for x in parts[1:] if x.strip()] if len(parts) > 2 else []
+
+
 def score(call, rec, answer):
     a = (call or {}).get("arguments") or {}
     p = str(a.get("prompt", ""))
@@ -153,6 +172,16 @@ def score(call, rec, answer):
     want = wanted_ratio((rec.get("input") or {}).get("brief"))
     dur = a.get("duration")
     mv = [t for t in MOVE if t in low]
+    # Sequences: the brief says how many beats it wanted, so both the count and the variety of
+    # framing are checkable. A single-shot brief passes this trivially.
+    asked_shots = int((rec.get("input") or {}).get("shots") or 1)
+    beats = shot_beats(p)
+    if asked_shots > 1:
+        framings = {frozenset([t for t in (SHOT | MOVE) if t in b.lower()]) for b in beats}
+        framings.discard(frozenset())
+        shots_ok = len(beats) >= 2 and len(framings) > 1
+    else:
+        shots_ok = not beats
     return {
         "tool": (call or {}).get("name") == "seedance_generate",
         "formula": ("the camera uses" in low) and ("the image is" in low or bool(SOUND.search(p))),
@@ -161,7 +190,9 @@ def score(call, rec, answer):
         "duration": isinstance(dur, int) and 4 <= dur <= 30,
         "audio": (a.get("generate_audio") is True) == bool(HAS_SOUND.search(p)),
         "fixed": (a.get("camera_fixed") is True) == ("static shot" in mv),
-        "language": lang_guess(answer) == rec.get("lang"),
+        "language": lang_guess(answer) == ALIAS.get(rec.get("lang"), rec.get("lang")),
+        "shots": shots_ok,
+        "n_beats": len(beats), "want_beats": asked_shots,
         "prompt": p[:200],
     }
 
@@ -180,23 +211,41 @@ def main():
     sys.path.insert(0, f"{H}/eval")
     from modelio import build_runner
 
-    recs = []
+    # Read the WHOLE holdout, then sample. Taking the first N in file order sampled one language
+    # directory and caught 3 sequences out of 120, when the holdout is 21% sequences: a number
+    # computed over 3 examples is not a measurement. Sampling is seeded so runs stay comparable,
+    # and sequences are drawn in proportion so the multi-shot figure rests on a real denominator.
+    import random as _r
+    pool = []
     for line in open(a.holdout, encoding="utf-8"):
         line = line.strip()
         if not line:
             continue
         r = json.loads(line)
-        if not str(r.get("id", "")).startswith("t6-hold-"):
+        if not str(r.get("id", "")).startswith(("t6-hold-", "t7-hold-")):
             continue
         b = blocks(r.get("output"))
         if b.get("USER") and r.get("menu"):
             r["_user"] = b["USER"]
-            recs.append(r)
-        if len(recs) >= a.limit:
-            break
+            pool.append(r)
+    langs = {ALIAS.get(r.get("lang"), r.get("lang")) for r in pool}
+    unknown = sorted(l for l in langs if l not in LANG_WORDS and l not in dict(DIACRITIC))
+    if unknown:
+        sys.exit(f"lang_guess has no rule for {unknown}. Every one of those records would be "
+                 f"scored as a language failure while being perfectly correct. Add them before "
+                 f"trusting this number.")
+    rng = _r.Random(7)
+    rng.shuffle(pool)
+    seqs = [r for r in pool if int((r.get("input") or {}).get("shots") or 1) > 1]
+    singles = [r for r in pool if int((r.get("input") or {}).get("shots") or 1) == 1]
+    want_seq = min(len(seqs), max(1, a.limit // 3))
+    recs = (seqs[:want_seq] + singles[:a.limit - want_seq])[:a.limit]
+    rng.shuffle(recs)
+    print(f"[seedance] pool {len(pool)} ({len(seqs)} sequences); sampling {len(recs)} "
+          f"of which {sum(1 for r in recs if int((r.get('input') or {}).get('shots') or 1) > 1)} are sequences",
+          flush=True)
     if not recs:
         sys.exit(f"no held-out records in {a.holdout}")
-    print(f"[seedance] {len(recs)} held-out briefs", flush=True)
 
     runner = build_runner({"kind": "morena", "name": a.name, "ckpt": a.ckpt,
                            "config": a.config, "tokenizer": a.tokenizer})
@@ -219,14 +268,18 @@ def main():
         rows.append(dict(score(call, r, answer), lang=r.get("lang"), answer=answer[:120]))
 
     n = len(rows)
-    keys = ["tool", "formula", "vocab", "ratio", "duration", "audio", "fixed", "language"]
+    keys = ["tool", "formula", "vocab", "ratio", "duration", "audio", "fixed", "language", "shots"]
     summary = {k: 100.0 * sum(bool(x[k]) for x in rows) / n for k in keys}
     os.makedirs(os.path.dirname(a.out), exist_ok=True)
     json.dump({"name": a.name, "n": n, "summary": summary, "rows": rows},
               open(a.out, "w"), indent=1, ensure_ascii=False)
-    print(f"\nHELD-OUT Seedance, {n} briefs, {a.name}")
+    seq = [r for r in rows if r["want_beats"] > 1]
+    print(f"\nHELD-OUT Seedance, {n} briefs ({len(seq)} of them sequences), {a.name}")
     for k in keys:
         print(f"  {k:9s} {summary[k]:6.1f}%")
+    if seq:
+        print(f"  {'sequences':9s} {100*sum(r['shots'] for r in seq)/len(seq):6.1f}%   "
+              f"(of the {len(seq)} briefs that asked for more than one shot)")
     ok = [x for x in rows if all(x[k] for k in keys)]
     print(f"  {'POSTABLE':9s} {100*len(ok)/n:6.1f}%   (every check passing on the same brief)")
     print(f"\nwrote {a.out}")

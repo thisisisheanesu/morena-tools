@@ -6,6 +6,7 @@
 <title>MORENA Pay</title>
 <style>
 :root{
+  --navh:56px;
   --ink:#0d1117; --mute:#5b6472; --line:#e4e7ec; --panel:#fff; --bg:#eef0f4;
   --brand:#0f7b6c; --brand2:#12a594; --accent:#e8590c; --accent-soft:#fff2e8;
   --ok:#15803d; --ok-soft:#eefaf1; --warn:#a16207; --warn-soft:#fef6dd;
@@ -61,7 +62,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
   body[data-tab="explain"] .phone,body[data-tab="learn"] .phone{display:none}
   body[data-tab="explain"] #box-learn,body[data-tab="explain"] #techwrap2{display:none}
   body[data-tab="learn"] #box-explain{display:none}
-  .phone{height:calc(100dvh - 54px)}
+
   .side{padding:18px 16px 40px}
 }
 
@@ -72,7 +73,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
    the margins used to provide comes from the content padding instead. */
 @media(max-width:940px){
   .stage{flex-direction:column;align-items:stretch;gap:0;padding:0;max-width:100%}
-  .phone{width:100%;max-width:100%;height:100dvh;min-height:0;
+  .phone{width:100%;max-width:100%;height:calc(100dvh - var(--navh));min-height:0;
          border-radius:0;border:0;box-shadow:none}
   .apphead{padding:calc(12px + env(safe-area-inset-top)) 18px 14px}
   .scroll{padding:0 18px 14px}
@@ -366,6 +367,18 @@ pre{font:11.5px/1.5 var(--mono);background:var(--bg);border:1px solid var(--line
 </head>
 <body>
 <div class="stage">
+  <nav class="tabs" id="tabs">
+    <button data-tab="app" class="on">
+      <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/></svg>
+      <span>Pay</span></button>
+    <button data-tab="explain">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>
+      <span>What happened</span><i class="badge" id="tabdot"></i></button>
+    <button data-tab="learn">
+      <svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h10"/></svg>
+      <span>Examples</span></button>
+  </nav>
+
 
   <!-- ================= PHONE ================= -->
   <div class="phone">
@@ -451,18 +464,6 @@ pre{font:11.5px/1.5 var(--mono);background:var(--bg);border:1px solid var(--line
   </div>
 
   <!-- ================= INSPECTOR ================= -->
-  <nav class="tabs" id="tabs">
-    <button data-tab="app" class="on">
-      <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/></svg>
-      <span>Pay</span></button>
-    <button data-tab="explain">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>
-      <span>What happened</span><i class="badge" id="tabdot"></i></button>
-    <button data-tab="learn">
-      <svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h10"/></svg>
-      <span>Examples</span></button>
-  </nav>
-
   <div class="side">
     <div>
       <div class="brandline">
