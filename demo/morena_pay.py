@@ -21,11 +21,19 @@ import os
 import modal
 
 APP = "morena-pay"
-# mini, not nano. On the held-out Paystack menu the two tie on picking the right tool (90.9%) and
-# on argument hygiene (95.5%), but mini emits a minimal patch 100% of the time against nano's
-# 66.7%, and asks before guessing 100% against 83.3%. Editing a pending transfer is the part of
-# this demo people actually try to break, so the better one goes in front of them.
-GGUF = os.environ.get("MORENA_PAY_GGUF", "mini-tools-Q4_K_M.gguf")
+# BOTH models, because neither wins outright and the two demos want opposite things.
+#
+# mini is better at nearly everything: right tool 100% against 90.9%, free-choice calling 100%
+# against 90.9%, stays in the user's language 100% against 75%, and 90.0% POSTABLE on held-out
+# Seedance briefs against 87.5%. But it OVER-CALLS: asked "Good morning, how are you today?" it
+# calls balance_fetch, and asked who won the match it invents a tool that is not in the menu.
+# Abstention is 25% against nano's 75%.
+#
+# Pay is the demo people prod with small talk, so nano sits behind it. Studio is a one-shot brief
+# where over-calling cannot happen (there is only one sensible tool) and language fidelity is the
+# whole point, so mini sits behind that. Two 4-bit files are 470MB together and load side by side.
+MODELS = {"nano": "nano-tools-Q4_K_M.gguf", "mini": "mini-tools-Q4_K_M.gguf"}
+DEFAULT_MODEL = os.environ.get("MORENA_PAY_GGUF", "nano")
 MODEL_DIR = "/models"
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -52,18 +60,26 @@ class Pay:
     def load(self):
         from llama_cpp import Llama
         self.error = None
+        self.llms = {}
         try:
             vol.reload()
-            path = os.path.join(MODEL_DIR, GGUF)
-            if not (os.path.exists(path) and os.path.getsize(path) > 10_000_000):
-                raise FileNotFoundError(
-                    f"{path} missing. Push it with: modal volume put morena-pay-models {GGUF}")
-            # n_threads matches the 4 cores requested; llama.cpp otherwise guesses from the host,
-            # which on a shared machine means oversubscribing and getting slower.
-            self.llm = Llama(model_path=path, n_ctx=4096, n_threads=4, n_batch=512, verbose=False)
+            for key, fn in MODELS.items():
+                path = os.path.join(MODEL_DIR, fn)
+                if not (os.path.exists(path) and os.path.getsize(path) > 10_000_000):
+                    raise FileNotFoundError(
+                        f"{path} missing. Push it with: modal volume put morena-pay-models {fn}")
+                # n_threads matches the 4 cores requested; llama.cpp otherwise guesses from the
+                # host, which on a shared machine means oversubscribing and getting slower.
+                self.llms[key] = Llama(model_path=path, n_ctx=4096, n_threads=4,
+                                       n_batch=512, verbose=False)
         except Exception as e:
-            self.llm = None
+            self.llms = {}
             self.error = f"{type(e).__name__}: {e}"
+
+    def pick(self, name):
+        """Resolve a requested model name, falling back to the default rather than erroring: a
+        demo page asking for a model that is not loaded should still answer."""
+        return self.llms.get(name) or self.llms.get(DEFAULT_MODEL)
 
     @modal.asgi_app()
     def web(self):
@@ -80,19 +96,29 @@ class Pay:
         def console():
             return FileResponse("/ui/console.html")
 
+        @api.get("/studio")
+        @api.get("/studio.html")
+        def studio():
+            # The Seedance demo. Same model, same endpoint, a different menu: the point of a
+            # schema-reading model is that the second use case costs a page, not a fine-tune.
+            return FileResponse("/ui/studio.html")
+
         @api.get("/props")
-        def props():
+        def props(model: str = ""):
             # The page reads model_path to show which model it is talking to, and treats a
             # non-200 as "model offline".
-            if self.llm is None:
+            if not self.llms:
                 return JSONResponse({"error": self.error}, status_code=503)
-            return {"model_path": GGUF, "n_ctx": 4096}
+            key = model if model in self.llms else DEFAULT_MODEL
+            return {"model_path": MODELS[key], "model": key, "n_ctx": 4096,
+                    "available": sorted(self.llms)}
 
         @api.post("/completion")
         async def completion(req: Request):
-            if self.llm is None:
+            if not self.llms:
                 return JSONResponse({"error": self.error}, status_code=503)
             b = await req.json()
+            llm = self.pick(b.get("model") or DEFAULT_MODEL)
             prompt = b.get("prompt") or ""
             if not prompt:
                 return JSONResponse({"error": "no prompt"}, status_code=400)
@@ -101,7 +127,7 @@ class Pay:
             # could go.
             n = min(int(b.get("n_predict") or 200), 320)
             prompt = prompt[-14000:]
-            out = self.llm(
+            out = llm(
                 prompt,
                 max_tokens=n,
                 temperature=float(b.get("temperature") or 0.0),

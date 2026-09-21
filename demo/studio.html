@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MORENA Studio</title>
+<style>
+:root{
+  --ink:#0b0d10; --mute:#6b7280; --line:#e5e7eb; --panel:#fff; --bg:#f4f5f7;
+  --brand:#7c3aed; --brand2:#a855f7; --accent:#e8590c; --accent-soft:#fff3ea;
+  --ok:#15803d; --ok-soft:#eefaf1; --film:#111318;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:ui-sans-serif,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1120px;margin:0 auto;padding:26px 16px 70px}
+header{display:flex;align-items:baseline;gap:11px;flex-wrap:wrap;margin-bottom:6px}
+h1{margin:0;font-size:22px;letter-spacing:-.02em}
+h1 em{font-style:normal;color:var(--brand)}
+.status{font:11px var(--mono);padding:4px 9px;border-radius:999px;border:1px solid var(--line);
+  color:var(--mute);white-space:nowrap}
+.status.live{color:var(--ok);border-color:var(--ok)}
+.status.down{color:var(--accent);border-color:var(--accent)}
+.lede{color:var(--mute);font-size:13.5px;margin:0 0 20px;max-width:64ch}
+
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.card h2{margin:0 0 12px;font-size:11px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--mute)}
+
+textarea{width:100%;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);
+  border-radius:12px;padding:12px 14px;font:15px/1.5 var(--sans);resize:vertical;min-height:92px}
+textarea:focus{outline:none;border-color:var(--brand)}
+.row{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:11px}
+button.go{background:var(--brand);color:#fff;border:0;border-radius:10px;cursor:pointer;
+  font:700 14px var(--sans);padding:11px 20px}
+button.go:disabled{opacity:.4;cursor:not-allowed}
+.chip{font:500 12px var(--sans);padding:7px 12px;border-radius:999px;cursor:pointer;
+  border:1px solid var(--line);background:transparent;color:var(--mute)}
+.chip:hover{border-color:var(--brand);color:var(--brand)}
+.chip b{font-weight:700;color:var(--ink)}
+
+/* the shot card: what a director would be handed */
+.shot{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel)}
+.frame{position:relative;background:var(--film);color:#fff;display:grid;place-items:center;
+  min-height:150px;padding:18px;text-align:center}
+.frame .ratio{position:absolute;top:10px;left:12px;font:11px var(--mono);opacity:.72}
+.frame .dur{position:absolute;top:10px;right:12px;font:11px var(--mono);opacity:.72}
+.frame .bars{position:absolute;inset:0;pointer-events:none}
+.frame .bars i{position:absolute;left:0;right:0;height:var(--bar);background:#000;opacity:.55}
+.frame .bars i:first-child{top:0} .frame .bars i:last-child{bottom:0}
+.frame p{margin:0;font-size:14px;line-height:1.5;max-width:44ch;opacity:.95}
+.meta{display:flex;flex-wrap:wrap;gap:6px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.tag{font:600 11px var(--sans);padding:5px 9px;border-radius:7px;background:var(--bg);
+  color:var(--mute);border:1px solid var(--line)}
+.tag.cam{background:#f5f0ff;color:var(--brand);border-color:#e6dbff}
+.tag.on{background:var(--ok-soft);color:var(--ok);border-color:#bbe7c9}
+.tag.off{opacity:.55}
+.promptbox{padding:13px 14px;font:13px/1.6 var(--sans)}
+.promptbox .lab{font:600 10.5px var(--sans);letter-spacing:.08em;text-transform:uppercase;
+  color:var(--mute);margin-bottom:6px}
+.promptbox .txt{white-space:pre-wrap;word-break:break-word}
+.actions{display:flex;gap:8px;padding:12px 14px;border-top:1px solid var(--line)}
+.actions button{flex:1;border:1px solid var(--line);background:var(--panel);border-radius:9px;
+  cursor:pointer;font:600 12.5px var(--sans);padding:9px;color:var(--ink)}
+.actions button:hover{background:var(--bg)}
+.actions button.pri{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+
+pre{font:11.5px/1.5 var(--mono);background:var(--bg);border:1px solid var(--line);
+  border-radius:10px;padding:11px;overflow-x:auto;margin:10px 0 0;white-space:pre-wrap;
+  word-break:break-word}
+.verd{padding:9px 12px;border-radius:9px;font-size:13px;border:1px solid;margin-bottom:7px;
+  display:flex;gap:8px;align-items:flex-start}
+.verd.good{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.verd.bad{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.verd.idle{background:transparent;border-color:var(--line);color:var(--mute)}
+.foot{font-size:12px;color:var(--mute);line-height:1.6;margin-top:14px}
+.foot code{font-family:var(--mono);font-size:11.5px}
+.dots{display:inline-flex;gap:3px;align-items:center}
+.dots i{width:5px;height:5px;border-radius:50%;background:var(--mute);animation:b 1.2s infinite}
+.dots i:nth-child(2){animation-delay:.18s} .dots i:nth-child(3){animation-delay:.36s}
+@keyframes b{0%,60%,100%{opacity:.25}30%{opacity:1}}
+.copied{font-size:12px;color:var(--ok);margin-left:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>MORENA <em>Studio</em></h1>
+    <span class="status" id="model">checking model</span>
+  </header>
+  <p class="lede">Say what you want to film, in Pidgin, Yoruba, Igbo, Hausa or English. A 503M
+    model running on a CPU turns it into a Seedance 2.5 instruction you can paste straight into
+    the API. The camera vocabulary is mined from 400 screenplays, so it uses the words the model
+    on the other end actually understands.</p>
+
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2>What do you want to film?</h2>
+        <textarea id="q" placeholder="Mo fẹ́ fídíò ọmọdé tí wọ́n ń ṣeré bọ́ọ̀lù ní ojú títì fún Reels mi..."></textarea>
+        <div class="row">
+          <button class="go" id="go" disabled>Write the shot</button>
+          <span class="copied" id="copied"></span>
+        </div>
+        <div class="row" id="chips"></div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h2>Does it hold up?</h2>
+        <div id="verdicts"><div class="verd idle">Ask for a shot and the checks appear here.</div></div>
+        <pre id="raw" style="display:none"></pre>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>The shot</h2>
+        <div id="shot"><div class="verd idle">Nothing yet.</div></div>
+      </div>
+      <div class="foot">
+        Checks are the ones that decide whether a call would actually run: the tool exists, the
+        prompt carries the camera clause Seedance's own guide asks for, every camera term is one
+        it understands, <code>duration</code> sits inside 4 to 30 seconds, and the aspect ratio
+        matches what the clip is for. Nothing is scored against a reference wording, because a
+        shot has no single right answer.
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+const MENU = [{"name":"seedance_generate","description":"Generate a video clip from a text prompt with Seedance 2.5","arguments":{"prompt":"string","aspect_ratio":"string","resolution":"string","duration":"number","generate_audio":"boolean","camera_fixed":"boolean","seed":"number"}},{"name":"seedance_image_to_video","description":"Animate a still image into a video clip","arguments":{"image_url":"string","prompt":"string","duration":"number","aspect_ratio":"string"}},{"name":"seedance_extend","description":"Extend an existing generated clip by a few more seconds","arguments":{"video_id":"string","prompt":"string","duration":"number"}},{"name":"seedance_video_edit","description":"Edit an existing clip following an instruction","arguments":{"video_id":"string","instruction":"string"}},{"name":"seedance_job_status","description":"Check whether a generation job has finished","arguments":{"job_id":"string"}}];
+const U="<reserved_0>", A="<reserved_1>", T="<reserved_2>", C="<reserved_3>", R="<reserved_5>";
+const MJ = JSON.stringify(MENU);
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+
+// The terms Seedance understands, and the ones this corpus was built from. Anything outside this
+// set in the camera clause is an invented word, which is the failure worth showing.
+const SHOT = ["extreme close-up","close-up","medium shot","wide shot","extreme wide shot",
+              "two shot","over-the-shoulder","insert","point of view"];
+const MOVE = ["dolly in","dolly out","tracking shot","crane up","pan","tilt","zoom",
+              "steadicam follow shot","handheld","rack focus","orbit shot","whip pan","static shot"];
+const ANGLE = ["low angle","high angle","overhead","eye level","dutch angle"];
+const RATIOS = ["16:9","9:16","1:1","4:3","3:4","21:9","9:21"];
+
+const EXAMPLES = [
+  ["Yoruba", "Mo fẹ́ kí o ṣèdá fídíò kan fún Reels mi níbi tí àwọn ọmọdé ṣe ń ṣeré bọ́ọ̀lù ní ojú títì."],
+  ["Pidgin", "Abeg make one video for my company website, show young person dey pay with phone for Lagos market."],
+  ["Hausa",  "Ina son bidiyo na mai sayar da kayan miya a kasuwa da safe, don shafin Instagram."],
+  ["Igbo",   "Achọrọ m vidiyo nke onye na-agba egwu n'okporo ámá nke Enugu maka TikTok."],
+  ["English","A thirty second cinematic piece of the coastline at golden hour for a tourism advert."],
+];
+
+async function health(){
+  const el = $("#model");
+  try{
+    const p = await (await fetch("/props?model=mini")).json();
+    el.textContent = (p.model_path||"model").split(/[\\/]/).pop().replace(/\.gguf$/,"");
+    el.className = "status live";
+  }catch(e){ el.textContent = "model offline"; el.className = "status down"; }
+}
+
+async function complete(prompt, n){
+  const r = await fetch("/completion", {method:"POST", headers:{"content-type":"application/json"},
+    // mini, by name. It scores 90.0% POSTABLE on held-out briefs against nano's 87.5% and stays
+    // in the user's language 99.2% of the time. Its weakness, over-calling on small talk, cannot
+    // bite here: this page only ever asks for one thing.
+    body: JSON.stringify({prompt, n_predict:n||420, temperature:0, top_p:1, cache_prompt:true,
+      model:"mini", stop:[U, R, "<|tool_result|>"]})});
+  if(!r.ok) throw new Error("model returned " + r.status);
+  return ((await r.json()).content || "").trim();
+}
+
+function firstJSON(text){
+  let s = text;
+  for(const st of [R,"<|tool_result|>",A,U]) s = s.split(st)[0];
+  const i = s.indexOf("{"); if(i<0) return null;
+  let d=0,q=false,e=false;
+  for(let k=i;k<s.length;k++){
+    const c=s[k];
+    if(e){e=false;continue}
+    if(c==="\\\\"){e=true;continue}
+    if(c==='"'){q=!q;continue}
+    if(q) continue;
+    if(c==="{")d++; else if(c==="}"){d--; if(!d){ try{return JSON.parse(s.slice(i,k+1))}catch(_){return null} }}
+  }
+  return null;
+}
+
+function termsIn(text, list){ const l=(text||"").toLowerCase(); return list.filter(t=>l.includes(t)); }
+
+function render(call, asked){
+  const a = (call && call.arguments) || {};
+  const p = String(a.prompt || "");
+  const shot = termsIn(p, SHOT), move = termsIn(p, MOVE), ang = termsIn(p, ANGLE);
+  const ratio = a.aspect_ratio, dur = a.duration;
+  const known = MENU.some(t => t.name === (call||{}).name);
+
+  const V = [];
+  V.push(known ? ["good","Called " + call.name + ", which exists in the API."]
+               : ["bad","Called " + ((call||{}).name || "nothing") + ", which is not one of the five tools."]);
+  V.push(/the camera uses/i.test(p) ? ["good","The prompt carries the camera clause Seedance asks for."]
+                                    : ["bad","No camera clause. Seedance would read this as a caption."]);
+  V.push((shot.length||move.length) ? ["good","Camera terms it understands: " + [...shot,...move,...ang].join(", ")]
+                                    : ["bad","No recognised camera term in the prompt."]);
+  V.push(RATIOS.includes(ratio) ? ["good","Aspect ratio " + ratio + "."]
+                                : ["bad","Aspect ratio " + (ratio||"missing") + " is not one Seedance accepts."]);
+  V.push((Number.isInteger(dur) && dur>=4 && dur<=30) ? ["good","Duration " + dur + "s, inside the 4 to 30 limit."]
+                                : ["bad","Duration " + (dur===undefined?"missing":dur) + " is outside 4 to 30."]);
+  if(asked) V.unshift(["bad","It asked a question first and had to be pushed to act."]);
+  $("#verdicts").innerHTML = V.map(([c,t]) =>
+    '<div class="verd '+c+'">'+(c==="good"?"&#10003;":"&#33;")+" <span>"+esc(t)+"</span></div>").join("");
+
+  // Letterbox the preview to the requested ratio, so the shape of the clip is visible at a glance.
+  const bar = ratio==="9:16" ? "0" : ratio==="1:1" ? "6%" : ratio==="21:9" ? "22%" : "12%";
+  const sound = /sound includes/i.test(p);
+  $("#shot").innerHTML =
+    '<div class="shot">' +
+      '<div class="frame" style="--bar:'+bar+'">' +
+        '<div class="bars"><i></i><i></i></div>' +
+        '<span class="ratio">'+esc(ratio||"?")+'</span><span class="dur">'+esc(dur||"?")+'s</span>' +
+        "<p>"+esc(p.split(".")[0]||"(no prompt)")+".</p>" +
+      "</div>" +
+      '<div class="meta">' +
+        [...shot,...ang,...move].map(t=>'<span class="tag cam">'+esc(t)+"</span>").join("") +
+        '<span class="tag">'+esc(a.resolution||"1080p")+"</span>" +
+        '<span class="tag '+(a.generate_audio?"on":"off")+'">audio '+(a.generate_audio?"on":"off")+"</span>" +
+        '<span class="tag '+(a.camera_fixed?"on":"off")+'">camera '+(a.camera_fixed?"locked":"moving")+"</span>" +
+      "</div>" +
+      '<div class="promptbox"><div class="lab">prompt sent to seedance 2.5</div>' +
+        '<div class="txt">'+esc(p)+"</div></div>" +
+      '<div class="actions">' +
+        '<button id="copy" class="pri">Copy the JSON</button>' +
+        '<button id="showraw">Show the call</button>' +
+      "</div>" +
+    "</div>";
+  $("#raw").textContent = JSON.stringify(call, null, 1);
+  $("#copy").onclick = async () => {
+    try{ await navigator.clipboard.writeText(JSON.stringify(call, null, 1));
+         $("#copied").textContent = "copied"; setTimeout(()=>$("#copied").textContent="",1600); }
+    catch(_){ $("#raw").style.display=""; }
+  };
+  $("#showraw").onclick = () => { const r=$("#raw"); r.style.display = r.style.display==="none"?"":"none"; };
+}
+
+async function ask(){
+  const q = $("#q").value.trim();
+  if(!q) return;
+  $("#go").disabled = true;
+  $("#shot").innerHTML = '<div class="verd idle"><span class="dots"><i></i><i></i><i></i></span> writing the shot</div>';
+  $("#verdicts").innerHTML = "";
+  const base = U+"\\n"+T+MJ+"\\n"+q+"\\n"+A;
+  try{
+    let raw = await complete(base, 420);
+    let call = firstJSON(raw);
+    let asked = false;
+    if(!call){
+      // Same known weakness as the Pay demo: it sometimes asks before acting. Ask once more with
+      // the tool-call marker prefilled, and say so rather than hiding it.
+      asked = true;
+      raw = await complete(base + C, 420);
+      call = firstJSON(C + raw);
+    }
+    if(!call){
+      $("#shot").innerHTML = '<div class="verd bad">No call came back. Try again.</div>';
+      $("#raw").style.display = ""; $("#raw").textContent = raw.slice(0,500);
+    } else render(call, asked);
+  }catch(e){
+    $("#shot").innerHTML = '<div class="verd bad">'+esc(e.message)+'</div>';
+  }
+  $("#go").disabled = !$("#q").value.trim();
+}
+
+$("#chips").innerHTML = EXAMPLES.map((e,i)=>'<button class="chip" data-i="'+i+'"><b>'+e[0]+"</b> &middot; "+esc(e[1].slice(0,30))+"...</button>").join("");
+$("#chips").onclick = e => { const b=e.target.closest("[data-i]"); if(!b) return;
+  $("#q").value = EXAMPLES[+b.dataset.i][1]; $("#go").disabled=false; ask(); };
+$("#go").onclick = ask;
+$("#q").addEventListener("input", () => { $("#go").disabled = !$("#q").value.trim(); });
+$("#q").addEventListener("keydown", e => { if(e.key==="Enter" && (e.metaKey||e.ctrlKey)) ask(); });
+health();
+</script>
+</body>
+</html>

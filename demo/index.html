@@ -25,27 +25,44 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
    height:auto, which let the phone grow past the screen and took the ask bar and the confirm
    sheet with it, which is why nothing worked on mobile. 100dvh, not 100vh, because the browser
    chrome on iOS makes vh taller than the visible area. */
-.tabs{display:none}
+.tabs{display:flex;max-width:390px;width:100%;margin:0 auto 12px;background:var(--panel);
+  border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.tabs button{flex:1;position:relative;border:0;background:none;cursor:pointer;
+  padding:9px 6px 8px;font:600 11px var(--sans);color:var(--mute);
+  display:flex;flex-direction:column;align-items:center;gap:4px}
+.tabs button svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9;
+  stroke-linecap:round;stroke-linejoin:round}
+.tabs button:after{content:"";position:absolute;left:22%;right:22%;bottom:0;height:2px;
+  border-radius:2px 2px 0 0;background:transparent}
+.tabs button.on{color:var(--brand)}
+.tabs button.on:after{background:var(--brand)}
+.badge{width:6px;height:6px;border-radius:50%;background:var(--accent);
+  position:absolute;top:6px;right:calc(50% - 20px);opacity:0;transition:opacity .2s}
+.badge.on{opacity:1}
 @media(max-width:940px){
-  .tabs{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:30;
-        background:var(--panel);border-top:1px solid var(--line);
-        padding-bottom:env(safe-area-inset-bottom)}
+  /* Nav at the top: this is the first thing on screen, so it says what the app is and what else
+     is in it before anything has to be scrolled to. Icon over label, active tab underlined. */
+  .tabs{display:flex;position:sticky;top:0;z-index:30;background:var(--panel);
+        border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top)}
   .tabs button{flex:1;position:relative;border:0;background:none;cursor:pointer;
-        padding:11px 6px 12px;font:600 11.5px var(--sans);color:var(--mute);
-        display:flex;flex-direction:column;align-items:center;gap:3px}
-  .tabs button:before{content:"";width:18px;height:2px;border-radius:2px;background:transparent}
+        padding:10px 6px 9px;font:600 11px var(--sans);color:var(--mute);
+        display:flex;flex-direction:column;align-items:center;gap:4px}
+  .tabs button svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.9;
+        stroke-linecap:round;stroke-linejoin:round}
+  .tabs button:after{content:"";position:absolute;left:22%;right:22%;bottom:0;height:2px;
+        border-radius:2px 2px 0 0;background:transparent}
   .tabs button.on{color:var(--brand)}
-  .tabs button.on:before{background:var(--brand)}
+  .tabs button.on:after{background:var(--brand)}
   .badge{width:6px;height:6px;border-radius:50%;background:var(--accent);
-         position:absolute;top:8px;right:calc(50% - 26px);opacity:0;transition:opacity .2s}
+         position:absolute;top:7px;right:calc(50% - 20px);opacity:0;transition:opacity .2s}
   .badge.on{opacity:1}
   /* One pane at a time. The phone loses the tab bar's height so nothing hides behind it. */
   body[data-tab="app"] .side{display:none}
   body[data-tab="explain"] .phone,body[data-tab="learn"] .phone{display:none}
   body[data-tab="explain"] #box-learn,body[data-tab="explain"] #techwrap2{display:none}
   body[data-tab="learn"] #box-explain{display:none}
-  .phone{height:calc(100dvh - 57px)}
-  .side{padding:18px 16px 76px}
+  .phone{height:calc(100dvh - 54px)}
+  .side{padding:18px 16px 40px}
 }
 
 /* On a phone there is no mockup. Drawing a picture of a phone inside a phone is a desktop
@@ -61,7 +78,6 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
   .scroll{padding:0 18px 14px}
   .askwrap{padding:10px 16px calc(12px + env(safe-area-inset-bottom))}
   .coach{border-radius:0}
-  .sheet{border-radius:22px 22px 0 0}
   .side{max-width:100%;width:100%;padding:22px 18px 56px;background:var(--bg);
         border-top:1px solid var(--line)}
 }
@@ -123,6 +139,13 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
 .msg.me{align-self:flex-end;background:var(--brand);color:#fff;border-bottom-right-radius:5px}
 .msg.bot{align-self:flex-start;background:var(--bg);border:1px solid var(--line);
   border-bottom-left-radius:5px}
+/* Shown when the model asks a question instead of acting. It is a real limitation, not something
+   to paper over, so the question stays on screen and this sits under it as one tap that says
+   "you had enough to go on". Under the hood it re-asks with the tool-call marker prefilled, which
+   is the same prompt shape the eval scores at 91%. */
+.nudge{align-self:flex-start;margin-top:-4px;border:1px dashed var(--line);background:transparent;
+  color:var(--brand);border-radius:999px;padding:7px 13px;font:600 12.5px var(--sans);cursor:pointer}
+.nudge:hover{border-color:var(--brand);background:var(--accent-soft)}
 .msg.sys{align-self:center;font-size:11.5px;color:var(--mute);background:transparent;padding:2px}
 
 /* A receipt in the thread. The sheet disappears on confirm, and without this the only trace of
@@ -328,6 +351,17 @@ pre{font:11.5px/1.5 var(--mono);background:var(--bg);border:1px solid var(--line
 .chip:hover{border-color:var(--brand);color:var(--brand)}
 .ghostbtn{font:600 11.5px var(--sans);padding:6px 11px;border-radius:7px;cursor:pointer;
   border:1px solid var(--line);background:transparent;color:var(--mute)}
+
+/* On a phone the FRAME is square and the contents are not. The screen has no rounded corners, so
+   a radius on anything that reaches the edge reads as a seam; but a text box, a card or a button
+   is an object sitting on that screen and should look like one. An earlier version squared
+   everything indiscriminately and the result was harsh. This block is last on purpose: the
+   component rules below set their own radii at the same specificity, so an override earlier in
+   the sheet silently loses. */
+@media(max-width:940px){
+  .phone,.coach,.scrim{border-radius:0}
+  .sheet{border-radius:18px 18px 0 0}
+}
 </style>
 </head>
 <body>
@@ -418,9 +452,15 @@ pre{font:11.5px/1.5 var(--mono);background:var(--bg);border:1px solid var(--line
 
   <!-- ================= INSPECTOR ================= -->
   <nav class="tabs" id="tabs">
-    <button data-tab="app" class="on"><span>Pay</span></button>
-    <button data-tab="explain"><span>What happened</span><i class="badge" id="tabdot"></i></button>
-    <button data-tab="learn"><span>Examples</span></button>
+    <button data-tab="app" class="on">
+      <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/></svg>
+      <span>Pay</span></button>
+    <button data-tab="explain">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>
+      <span>What happened</span><i class="badge" id="tabdot"></i></button>
+    <button data-tab="learn">
+      <svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h10"/></svg>
+      <span>Examples</span></button>
   </nav>
 
   <div class="side">
@@ -652,7 +692,7 @@ const esc = s => String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt
 async function ask(){
   const q = $("#q").value.trim();
   if(!q || busy) return;
-  busy = true; $("#go").disabled = true; $("#q").value = ""; sizeInput();
+  busy = true; nudged = false; $("#go").disabled = true; $("#q").value = ""; sizeInput();
   $("#hints").classList.add("gone");
   bubble("me", esc(q));
   const think = bubble("bot", '<span class="dots"><i></i><i></i><i></i></span>');
@@ -718,6 +758,42 @@ async function applyCall(raw, q, retried){
     verdict([[asked ? "bad" : "good",
               asked ? "Asked a question instead of calling anything."
                     : "Answered in plain language. No tool called, and none was needed."]]);
+    // It hesitates on the opening request more often than it should, and asks for a detail the
+    // tool does not even have a field for ("which bank?" on a transfer). That comes from the
+    // session training data, where conversations frequently open with a clarifying question.
+    // So: ask once more with the tool-call marker prefilled, which is the same prompt shape the
+    // eval scores at 91%, and say plainly in the panel that it needed a second push. Automatic
+    // rather than a button, because making someone tap through a known weakness every time is
+    // worse than telling them about it once.
+    if(asked && lastPrompt && !retried){
+      const think = bubble("bot", '<span class="dots"><i></i><i></i><i></i></span>');
+      try{
+        const forced = await complete(lastPrompt + C, 300);
+        const fc = firstJSON(C + forced);
+        if(fc){
+          think.remove();
+          nudged = true;
+          return applyCall(C + forced, q, true);
+        }
+      }catch(e){ console.error("[morena] forced retry failed:", e); }
+      think.remove();
+    }
+    if(asked && lastPrompt){
+      const b = document.createElement("button");
+      b.className = "nudge";
+      b.textContent = "Just do it with what I said";
+      b.onclick = async () => {
+        b.remove();
+        const think = bubble("bot", '<span class="dots"><i></i><i></i><i></i></span>');
+        try{
+          const forced = await complete(lastPrompt + C, 300);
+          think.remove();
+          await applyCall(C + forced, q, true);
+        }catch(e){ think.remove(); bubble("bot", esc(e.message)); }
+      };
+      $("#msgs").appendChild(b);
+      $("#scroll").scrollTop = $("#scroll").scrollHeight;
+    }
     plain([asked
       ? ["", "It asked you a question",
          "It wants a detail before it acts. Sometimes that is the right call. Sometimes it is "
@@ -742,9 +818,12 @@ async function applyCall(raw, q, retried){
   verdict(V);
   const nice = PRETTY[call.name] || call.name;
   plain(known
-    ? [["good","It understood: " + nice,
-        "It picked the right action out of ten it had never seen before, and filled in the "
-        + "details from what you said."]]
+    ? [[nudged ? "" : "good", (nudged ? "It got there on the second ask: " : "It understood: ") + nice,
+        nudged
+        ? "It hesitated first and asked a question about a detail this action does not have a "
+          + "field for, so it was asked again more firmly. A known weak spot in this version."
+        : "It picked the right action out of ten it had never seen before, and filled in the "
+          + "details from what you said."]]
     : [["bad","It made up an action",
         "There is no \u201c" + (call.name || "?") + "\u201d in this app. It invented one, which is "
         + "exactly the kind of mistake worth catching."]]);
@@ -946,7 +1025,12 @@ $("#chips").onclick = e => { const b=e.target.closest("[data-i]"); if(!b) return
 $("#hints").innerHTML = HINTS.map((h,i)=>'<button class="hint" data-h="'+i+'">'+esc(h[0])+"</button>").join("");
 $("#hints").onclick = e => { const b=e.target.closest("[data-h]"); if(!b) return; fire(HINTS[+b.dataset.h][1]); };
 
-function fire(text){ $("#q").value = text; sizeInput(); ask(); }
+function fire(text){
+  // Tapping an example lives on the Examples tab, so jump back to the app first. Otherwise the
+  // request is sent to a screen you cannot see and it looks like nothing happened.
+  if(document.body.dataset.tab && document.body.dataset.tab !== "app") setTab("app");
+  $("#q").value = text; sizeInput(); ask();
+}
 function sizeInput(){
   const t = $("#q");
   t.style.height = "auto";
@@ -1008,6 +1092,11 @@ if(window.visualViewport){
 // person is looking at the app, so the explanation is discoverable without nagging.
 function setTab(t){
   document.body.dataset.tab = t;
+  if(window.innerWidth > 940){
+    const el = t === "app" ? document.querySelector(".phone")
+             : t === "explain" ? $("#box-explain") : $("#box-learn");
+    if(el) el.scrollIntoView({behavior:"smooth", block:"nearest"});
+  }
   document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === t));
   if(t === "explain") $("#tabdot").classList.remove("on");
   window.scrollTo(0, 0);

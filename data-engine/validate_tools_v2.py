@@ -70,6 +70,53 @@ def check(rec):
             extra = set(c.get("arguments") or {}) - set((menu.get(c["name"], {}).get("arguments") or {}))
             if extra: return "undeclared_args"
         return None
+    if t == "toolact":
+        # Same blocks as toolcall_api, plus the two things this type exists to enforce: it must
+        # ACT rather than ask, and it must not invent arguments the user never supplied.
+        if not b.get("USER") or not b.get("ANSWER"): return "missing_block"
+        c = jload(b.get("CALL"))
+        if not c or not c.get("name"): return "no_call"
+        tgt = (rec.get("input") or {}).get("target")
+        if tgt and c["name"] != tgt: return "wrong_tool_name"
+        if menu:
+            extra = set(c.get("arguments") or {}) - set((menu.get(c["name"], {}).get("arguments") or {}))
+            if extra: return "undeclared_args"
+        if "?" in (b.get("ANSWER") or ""): return "asked_instead_of_acting"
+        return None
+    if t == "seedance":
+        if not b.get("USER") or not b.get("ANSWER"): return "missing_block"
+        c = jload(b.get("CALL"))
+        if not c or not c.get("name"): return "no_call"
+        if c["name"] != "seedance_generate": return "wrong_tool_name"
+        a = c.get("arguments") or {}
+        if menu:
+            extra = set(a) - set((menu.get(c["name"], {}).get("arguments") or {}))
+            if extra: return "undeclared_args"
+        pr = str(a.get("prompt") or "")
+        # The prompt is the deliverable. Without the camera clause it is a caption, not a shot.
+        if len(pr) < 60: return "prompt_too_short"
+        if "the camera uses" not in pr.lower(): return "no_camera_clause"
+        d = a.get("duration")
+        if not isinstance(d, int) or not (4 <= d <= 30): return "bad_duration"
+        if a.get("aspect_ratio") not in ("16:9","9:16","1:1","4:3","3:4","21:9","9:21"):
+            return "bad_aspect_ratio"
+        return None
+    if t == "toolsession":
+        turns = {}
+        for line in (rec.get("output") or "").splitlines():
+            m = re.match(r"^T(\d+)_(USER|ACT|RESULT|ANSWER)\s*:\s*(.*)$", line.strip())
+            if m: turns.setdefault(int(m.group(1)), {})[m.group(2)] = m.group(3)
+        if len(turns) < 3: return "too_few_turns"
+        order = sorted(turns)
+        first = turns[order[0]]
+        if not first.get("USER") or not first.get("ANSWER"): return "missing_block"
+        # Turn one must act. Opening with a clarifying question is the habit this corpus was
+        # rebuilt to remove, so an example that teaches it does not get in.
+        act = (first.get("ACT") or "").strip().upper()
+        if act in ("", "NONE", "NULL"): return "opens_without_acting"
+        if not any((turns[k].get("ACT") or "").strip().upper() in ("NONE","NULL") for k in order):
+            return "no_prose_turn"
+        return None
     return "unknown_type"
 
 def main(d):

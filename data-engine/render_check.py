@@ -16,7 +16,7 @@ import importlib.util, json, sys, os
 
 spec = importlib.util.spec_from_file_location(
     "b18", os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                        "..", "train", "build_tools_v18.py"))
+                        "..", "data", "leonardo", "build_tools_v18.py"))
 b18 = importlib.util.module_from_spec(spec); spec.loader.exec_module(b18)
 
 SHOW = {"toolcall_api": 1, "toolpatch": 2, "toolrefuse": 1, "tooldisambig": 1}

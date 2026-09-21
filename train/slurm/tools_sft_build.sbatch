@@ -27,7 +27,7 @@ source $B/venv/bin/activate
 python -u $H/data/leonardo/build_tools_v18.py \
   --raw     $B/synth_raw \
   --out-dir $B/data/sft18_tools \
-  --dup "toolcall_api=3,toolpatch=2,toolrefuse=1,tooldisambig=1,toolsession=2"
+  --dup "toolcall_api=2,toolact=3,seedance=2,toolpatch=2,toolrefuse=1,tooldisambig=1,toolsession=2"
 
 python - <<'PY'
 import json

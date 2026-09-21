@@ -15,13 +15,21 @@ import argparse, collections, json, os, sys
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--seeds", default="jobs/tools_v2_pilot.json")
+    # Six seed files now, one per wave. The menus live in the seeds and nowhere else, so a
+    # record whose seed file is missing cannot be rendered at all, which is why the count of
+    # unmatched records is printed rather than swallowed.
+    ap.add_argument("--seeds", nargs="+", default=["jobs/tools_v2_pilot.json"])
     ap.add_argument("--out", default="staged/synth_raw")
     ap.add_argument("inputs", nargs="+", help="jsonl files of generated records (clean.jsonl)")
     a = ap.parse_args()
 
-    seeds = {j["id"]: j for j in json.load(open(a.seeds, encoding="utf-8"))}
-    print(f"[join] {len(seeds):,} seed jobs")
+    seeds = {}
+    for f in a.seeds:
+        n0 = len(seeds)
+        for j in json.load(open(f, encoding="utf-8")):
+            seeds[j["id"]] = j
+        print(f"[join]   {f}: {len(seeds)-n0:,} jobs")
+    print(f"[join] {len(seeds):,} seed jobs across {len(a.seeds)} files")
 
     groups, miss, dup, bad = collections.defaultdict(list), 0, 0, 0
     seen = set()

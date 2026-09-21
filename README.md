@@ -58,35 +58,68 @@ immediately after emitting a correct patch.
 
 ## Results
 
-Held-out menu from the real Paystack OpenAPI spec. No tool name in it appears in the training data.
+### Tool calling, held-out Paystack menu
+
+No tool name in this menu appears in the training data, and the names are not guessable:
+`transferrecipient_create`, `bank_resolveAccountNumber`.
 
 | | base | nano-tools (209M) | mini-tools (503M) |
 |---|---|---|---|
-| Picks the right tool | 0 to 9% | 91% | **91%** |
-| Uses only declared arguments | 0% | 100% | 91% |
-| Edits one field, not all | 0% | 100% | **100%** |
-| Stays quiet when no tool fits | 0 to 13% | 100% | **100%** |
-| Asks instead of guessing | 0% | 83% | **100%** |
-| Carries a thread across six turns | 0% | 100% | **100%** |
-| Decides to call unprompted | 18 to 27% | 27% | **50%** |
+| Picks the right tool | 0 to 9% | 90.9% | **100%** |
+| Decides to call unprompted | 18 to 27% | 90.9% | **100%** |
+| Uses only declared arguments | 0% | **100%** | **100%** |
+| Edits one field, not all | 0% | **100%** | **100%** |
+| Stays quiet when no tool fits | 0 to 13% | **75%** | 25% |
+| Follows a mid-conversation language switch | 0% | **100%** | **100%** |
+| Carries a thread across six turns | 0% | **100%** | **100%** |
+| Answers in the user's language | 0 to 50% | 75% | **100%** |
 
-Nano was trained harder (700 steps against mini's 450) and still lost on the two rows that involve
-judgement, so the demo ships mini.
+### Seedance 2.5, 120 held-out briefs
 
-The last row is the honest limitation. Left to decide for itself the model calls about half the
-time, and otherwise asks a clarifying question, occasionally about a field the tool does not have.
-Prefilling the tool-call marker is the workaround, and is what the 91% measures.
+African-language video briefs turned into instructions postable to Seedance unedited. Scored
+structurally, never against a reference wording, because a shot has no single right answer.
 
-Weights: [thisisisheanesu/morena-tools-gguf](https://huggingface.co/thisisisheanesu/morena-tools-gguf)
-Data: [thisisisheanesu/morena-tools-nigerian-fintech](https://huggingface.co/datasets/thisisisheanesu/morena-tools-nigerian-fintech)
+| | nano-tools | mini-tools |
+|---|---|---|
+| Chose `seedance_generate` over four other endpoints | 100% | 100% |
+| Prompt carries the camera clause | 100% | 100% |
+| Camera terms Seedance understands | 100% | 100% |
+| Aspect ratio matches the purpose | 99.2% | 100% |
+| Duration inside 4 to 30 seconds | 100% | 100% |
+| Replied in the user's language | 96.7% | 99.2% |
+| **Every check passing on one brief** | **87.5%** | **90.0%** |
 
-## Layout
+Neither wins outright. mini leads everywhere except abstention, where it over-calls badly enough
+to answer "Good morning, how are you today?" with a balance lookup, so the demo serves nano behind
+the payments page and mini behind the video page.
+
+## Four measurement bugs, each of which nearly became a false finding
+
+Worth reading if you are building an eval rather than a model. Every one was caught by reading the
+failing rows instead of the summary line.
+
+1. **The eval hardcoded checkpoint step numbers.** When a run finished at a different step it
+   silently SKIPPED both fine-tunes and printed a clean table of base models, which is
+   indistinguishable from a result. It now resolves the newest checkpoint and prints `!! MISSING`.
+2. **The language detector had word lists for five languages; the corpus has eight.** Every
+   correct Zulu, Shona and Swahili answer scored as a failure and read as a model defect.
+3. **Among the five it did cover**, "A n se fidio" failed while "Mo n se fidio" passed, because
+   the list held "mo" but not the single letter "a". Both are perfect Yoruba. The replacement
+   checks orthography first: Yoruba's under-dots, Igbo's dotted vowels, Hausa's hooked letters.
+4. **The language-switch suite scored the switch on a turn that warrants a tool call.** A JSON
+   object has no language, so it read the English field names and reported 25% for a model that
+   was behaving correctly.
+
+Reported wrongly at first: 24% language adherence, 14% postable. Actual: 96.7% and 87.5%.
+
+## Layout## Layout
 
 ```
 data-engine/   generators, validator, and the join that reattaches each record to its menu
+seedance/      camera-grammar miner: 520,378 screenplay sentences in, 34 canonical terms out
 train/         corpus builder (build_tools_v18.py) and the SLURM jobs
 eval/          probe_tools_v2.py: base vs fine-tuned on a held-out menu
-demo/          MORENA Pay, the single-file app, and the Modal deployment
+demo/          MORENA Pay (index.html) and MORENA Studio (studio.html), plus the Modal app
 docs/          the write-up
 ```
 

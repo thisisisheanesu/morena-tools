@@ -31,7 +31,8 @@ import argparse, glob, json, os, random, re, sys, time
 ROOT = "/leonardo_scratch/large/userexternal/imisi000/morena"
 TOKENIZER = f"{ROOT}/data/tokenizer/tokenizer.json"
 SHARD_TOKENS = 100_000_000
-TYPES = ("toolcall_api", "toolpatch", "toolrefuse", "tooldisambig", "toolsession")
+TYPES = ("toolcall_api", "toolact", "seedance", "toolpatch", "toolrefuse",
+         "tooldisambig", "toolsession")
 
 USER, ASSISTANT, TOOLS = "<reserved_0>", "<reserved_1>", "<reserved_2>"
 TOOL_CALL, TOOL_RESULT = "<reserved_3>", "<reserved_5>"
@@ -156,7 +157,7 @@ def segments(rec):
         return None
     head = f"{USER}\n{TOOLS}{j1(menu)}\n{b['USER'].strip()}\n"
 
-    if typ == "toolcall_api":
+    if typ in ("toolcall_api", "toolact", "seedance"):
         call, ans = jload(b.get("CALL")), (b.get("ANSWER") or "").strip()
         if not call or not ans:
             return None
@@ -212,7 +213,7 @@ def main():
     ap.add_argument("--out-dir", default=f"{ROOT}/data/sft18_tools")
     ap.add_argument("--tokenizer", default=TOKENIZER)
     ap.add_argument("--seed", type=int, default=18)
-    ap.add_argument("--dup", default="toolcall_api=3,toolpatch=2,toolrefuse=1,tooldisambig=1,toolsession=2",
+    ap.add_argument("--dup", default="toolcall_api=2,toolact=3,seedance=2,toolpatch=2,toolrefuse=1,tooldisambig=1,toolsession=2",
                     help="type=factor,... see the note below before changing these")
     # DUP HISTORY, because two rounds of guessing cost two training runs.
     #   v1  api=1 patch=3 refuse=2 disambig=3  ->  free-choice tool accuracy 64%
@@ -223,8 +224,16 @@ def main():
     # reference was given). One asks which bank a refund should use, which is not a field refunds
     # have. disambig at x3 was a quarter of the corpus teaching "when unsure, ask", and terse real
     # requests always look under-specified to a model holding that prior.
-    # v3 therefore cuts disambig to x1 and raises straightforward calls to x3. The sessions carry
-    # several immediate calls each, in context, as a further counterweight.
+    # v3 cut disambig to x1 and raised straightforward calls to x3. The sessions carry several
+    # immediate calls each, in context, as a further counterweight.
+    #   v3  api=3 patch=2 refuse=1 disambig=1 session=2  ->  free-choice 50% (nano 27%)
+    # Better, and still only half. Reading the live model: it stalls on TERSE requests, asking for
+    # a field the tool does not have ("which bank?" on a transfer with no bank argument). Nothing
+    # in the corpus showed a short request being acted on, because every generated request was
+    # fully specified. v4 adds `toolact` at x3: deliberately terse requests, answered by calling
+    # immediately with only the arguments the user supplied and nothing invented. Those records
+    # also pin the reply to the user's own language, which is the second complaint: it drifts into
+    # English on the answer even when the whole conversation is Yoruba.
     ap.add_argument("--max-per-type", type=int, default=200000)
     a = ap.parse_args()
 
@@ -263,6 +272,11 @@ def main():
                     if r.get("degenerate") or r.get("empty"):
                         bad += 1
                         continue
+                    if str(r.get("id", "")).startswith("t6-hold-"):
+                        # A held-out record has no business in a training shard. Failing loudly
+                        # beats a quiet skip: if these are reaching the builder at all, the
+                        # staging step is wrong and every number downstream is contaminated.
+                        sys.exit(f"HELD-OUT record {r['id']} found in {p}. Staging is wrong.")
                     segs = segments(r)
                     if not segs:
                         bad += 1
